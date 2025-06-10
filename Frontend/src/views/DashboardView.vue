@@ -16,7 +16,7 @@
         </button>
         <h1 class="text-xl font-semibold text-gray-800">Dashboard</h1>
         <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-300">
-          <img :src="userData.avatar" alt="Avatar" class="object-cover h-full w-full"
+          <img src="@/assets/user-avatar.jpg" alt="Avatar" class="object-cover h-full w-full"
                onerror="this.style.display='none'" />
         </div>
       </header>
@@ -34,7 +34,7 @@
         <!-- Profile Card -->
         <div class="bg-white rounded-lg border p-4 mb-6 flex items-center">
           <div class="h-12 w-12 rounded-full overflow-hidden mr-3 bg-gray-300">
-            <img :src="userData.avatar" alt="User Avatar" class="object-cover h-full w-full"
+            <img src="@/assets/user-avatar.jpg" alt="User Avatar" class="object-cover h-full w-full"
                  onerror="this.style.display='none'" />
           </div>
           <div>
@@ -54,7 +54,7 @@
 
         <!-- Today's Classes -->
         <div class="mb-6">
-          <h3 class="font-medium mb-3">Today's Classes</h3>
+          <h3 class="font-medium mb-3">Yesterday's Classes</h3>
           <div v-if="todayClasses.length">
             <div
               v-for="(cls, idx) in todayClasses"
@@ -207,7 +207,6 @@ export default {
         })
       }
 
-      // 5) split today's vs upcoming
       todayClasses.value = all.filter(e => e.dayNum === todayNum)
       upcomingClasses.value = all
         .filter(e => e.dayNum > todayNum)
@@ -234,10 +233,6 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-/* (retain your existing styles) */
-</style>
 
 
 <style>
