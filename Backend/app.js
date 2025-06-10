@@ -4,9 +4,9 @@ const app = express();
 app.use(express.json());
 
 // Router
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/scheduling', require('./routes/scheduling'));
-app.use('/api/timetable', require('./routes/timetable'));
+app.use('/api/auth', require('./router/auth'));
+app.use('/api/scheduling', require('./router/scheduling'));
+app.use('/api/timetable', require('./router/timetable'));
 
 // Root
 app.get('/', (req, res) => res.send('API Running'));
