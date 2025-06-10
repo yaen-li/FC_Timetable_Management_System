@@ -1,9 +1,9 @@
 <template>
-    <div class="relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div class="relative min-h-screen bg-gray-50">
       <Sidebar :open="sidebarOpen" @update:open="val => sidebarOpen = val" />
   
       <div class="flex flex-col">
-        <header class="flex items-center justify-between p-4 bg-white shadow-lg">
+        <header class="flex items-center justify-between p-4 bg-white shadow">
           <button @click="sidebarOpen = true" class="p-2">
             <svg class="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -16,36 +16,38 @@
         </header>
   
         <main class="p-4 sm:p-6 bg-white flex-1">
-          <!-- Admin Auth Required -->
-          <div v-if="!adminSessionId && !loadingAdminAuth" class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-lg font-medium mb-2 text-blue-800">Admin Authentication Required</h3>
-                <p class="text-sm text-blue-600">You need admin access to view students by section</p>
-              </div>
+          <!-- Role Selection -->
+          <div v-if="!adminSessionId && !loadingAdminAuth" class="mb-6">
+            <div class="text-center py-8">
+              <svg class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <h3 class="text-lg font-medium text-gray-800 mb-2">Student Search</h3>
+              <p class="text-gray-600 mb-6">Search for students enrolled in specific course sections</p>
+              
               <button
                 @click="getAdminAuth"
                 :disabled="loadingAdminAuth"
-                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 flex items-center space-x-2 transition-colors"
+                class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
               >
                 <svg v-if="loadingAdminAuth" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                 </svg>
                 <svg v-else class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <span>{{ loadingAdminAuth ? 'Authenticating...' : 'Get Admin Access' }}</span>
+                <span>{{ loadingAdminAuth ? 'Loading...' : 'Search Students' }}</span>
               </button>
             </div>
           </div>
 
           <!-- Section Selection -->
-          <div v-if="adminSessionId" class="mb-6 p-4 bg-white shadow-md rounded-lg border">
+          <div v-if="adminSessionId" class="mb-6 p-4 bg-white rounded-lg shadow-md border">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-medium text-gray-800">Select Section</h3>
               <div class="flex space-x-2">
-                <button @click="clearAllCache" class="text-xs text-red-500 hover:text-red-700 px-2 py-1 border rounded transition-colors">
+                <button @click="clearAllCache" class="text-xs text-red-500 hover:text-red-700 px-2 py-1 border rounded">
                   Clear Cache
                 </button>
               </div>
@@ -95,7 +97,7 @@
                 </select>
               </div>
 
-              <!-- Replace the subject select div with this searchable dropdown -->
+              <!-- Searchable Subject Dropdown -->
               <div>
                 <label for="subjectSelect" class="block text-sm font-medium text-gray-700 mb-2">
                   Subject
@@ -107,7 +109,6 @@
                   <input
                     v-model="subjectSearchQuery"
                     @click="showSubjectDropdown = true"
-                    @input="showSubjectDropdown = true"
                     type="text"
                     placeholder="Search and select subject..."
                     class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
@@ -198,8 +199,36 @@
             <p class="text-gray-600">Loading students...</p>
           </div>
 
+          <!-- Summary Stats -->
+          <div v-else-if="students.length > 0" class="mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div class="bg-blue-100 rounded-lg p-4">
+                <h3 class="text-center font-medium mb-2">Total Students</h3>
+                <p class="text-2xl font-bold text-center text-blue-600">{{ students.length }}</p>
+              </div>
+              <div class="bg-green-100 rounded-lg p-4">
+                <h3 class="text-center font-medium mb-2">Active Students</h3>
+                <p class="text-2xl font-bold text-center text-green-600">
+                  {{ students.filter(s => s.status === '-' || !s.status).length }}
+                </p>
+              </div>
+              <div class="bg-yellow-100 rounded-lg p-4">
+                <h3 class="text-center font-medium mb-2">Faculty Count</h3>
+                <p class="text-2xl font-bold text-center text-yellow-600">
+                  {{ [...new Set(students.map(s => s.kod_fakulti))].length }}
+                </p>
+              </div>
+              <div class="bg-purple-100 rounded-lg p-4">
+                <h3 class="text-center font-medium mb-2">Programs</h3>
+                <p class="text-2xl font-bold text-center text-purple-600">
+                  {{ [...new Set(students.map(s => s.kod_kursus))].length }}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Students Table -->
-          <div v-else-if="students.length > 0" class="bg-white rounded-lg shadow-md overflow-hidden">
+          <div v-if="students.length > 0" class="bg-white rounded-lg shadow-md overflow-hidden border">
             <!-- Table Header with Stats -->
             <div class="bg-gray-100 px-6 py-4 border-b">
               <div class="flex items-center justify-between">
@@ -207,14 +236,14 @@
                   Students in {{ selectedSubject }} - Section {{ selectedSection }}
                 </h2>
                 <div class="flex items-center space-x-4">
-                  <span class="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                    {{ students.length }} Students
-                  </span>
                   <button
                     @click="exportStudents"
-                    class="px-3 py-1 bg-gradient-to-r from-green-400 to-green-500 text-white text-sm rounded-full hover:from-green-500 hover:to-green-600 transition-colors"
+                    class="flex items-center space-x-1 px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
                   >
-                    Export List
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Export List</span>
                   </button>
                 </div>
               </div>
@@ -222,19 +251,22 @@
 
             <!-- Search and Filter -->
             <div class="p-4 border-b bg-gray-50">
-              <div class="flex items-center space-x-4">
-                <div class="flex-1">
+              <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
+                <div class="relative flex-grow mb-2 md:mb-0">
                   <input
                     v-model="searchQuery"
                     type="text"
-                    placeholder="Search by name or matric number..."
-                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Search by name or ID number..."
+                    class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
+                  <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                 </div>
-                <div>
+                <div class="md:w-48">
                   <select
                     v-model="sortBy"
-                    class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     <option value="nama">Sort by Name</option>
                     <option value="no_kp">Sort by ID</option>
@@ -345,7 +377,7 @@
             </p>
             <button 
               @click="retryLoadStudents" 
-              class="mt-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md hover:from-blue-700 hover:to-blue-800 transition-colors"
+              class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Retry Loading Students
             </button>

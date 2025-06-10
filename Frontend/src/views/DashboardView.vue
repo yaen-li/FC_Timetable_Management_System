@@ -1,94 +1,141 @@
 <template>
   <div class="relative min-h-screen bg-gray-50">
-    <!-- Sidebar -->
-    <Sidebar :open="sidebarOpen" @update:open="val => sidebarOpen = val" />
+    <Sidebar :open="sidebarOpen" @update:open="v => sidebarOpen = v" />
 
-    <!-- Main content -->
     <div class="flex flex-col">
-      <!-- Header -->
       <header class="flex items-center justify-between p-4 bg-white shadow">
         <button @click="sidebarOpen = true" class="p-2">
-          <!-- Hamburger Icon -->
           <svg class="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 6h16M4 12h16M4 18h16" />
+                  d="M4 6h16M4 12h16M4 18h16"/>
           </svg>
         </button>
         <h1 class="text-xl font-semibold text-gray-800">Dashboard</h1>
         <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-300">
-          <img src="@/assets/user-avatar.jpg" alt="Avatar" class="object-cover h-full w-full"
-               onerror="this.style.display='none'" />
+          <img src="@/assets/user-avatar.jpg" alt="Avatar" class="object-cover h-full w-full" onerror="this.style.display='none'" />
         </div>
       </header>
 
-      <!-- Dashboard Content -->
       <main class="p-4 sm:p-6 bg-white flex-1 overflow-auto">
-        <!-- Welcome Header -->
         <div class="mb-4">
-          <h2 class="text-lg font-medium text-orange-500">
-            Welcome, {{ userData.full_name }}
-          </h2>
+          <h2 class="text-lg font-medium text-orange-500">Welcome, {{ userData.full_name }}</h2>
           <h3 class="text-gray-700 font-medium">Dashboard</h3>
         </div>
 
-        <!-- Profile Card -->
-        <div class="bg-white rounded-lg border p-4 mb-6 flex items-center">
-          <div class="h-12 w-12 rounded-full overflow-hidden mr-3 bg-gray-300">
-            <img src="@/assets/user-avatar.jpg" alt="User Avatar" class="object-cover h-full w-full"
-                 onerror="this.style.display='none'" />
+        <div class="bg-white rounded-lg border p-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center mb-4 sm:mb-0">
+            <div class="h-12 w-12 rounded-full overflow-hidden mr-3 bg-gray-300">
+              <img src="@/assets/user-avatar.jpg" alt="User Avatar" class="object-cover h-full w-full" onerror="this.style.display='none'" />
+            </div>
+            <div>
+              <p class="font-medium">{{ userData.full_name }}</p>
+              <p class="text-sm text-gray-500">{{ userData.description }}</p>
+            </div>
           </div>
-          <div>
-            <p class="font-medium">{{ userData.full_name }}</p>
-            <p class="text-sm text-gray-500">{{ userData.description }}</p>
+          <div class="text-sm text-gray-700 space-y-1 text-right sm:text-left">
+            <p><strong>Program:</strong> {{ programName }}</p>
+            <p><strong>Credits Completed:</strong> {{ totalCredits }}</p>
+            <p><strong>Current Semester:</strong> {{ currentSemesterNumber }}/{{ totalProgramSemesters }}</p>
           </div>
         </div>
 
-        <!-- Courses Summary -->
-        <div class="bg-yellow-200 rounded-lg p-4 mb-6">
-          <h3 class="text-center font-medium mb-2">Total Courses</h3>
-          <p class="text-4xl font-bold text-center">{{ courseCount }}</p>
-          <p class="text-sm text-center text-gray-600">
-            {{ electivesCount }} {{ electivesCount === 1 ? 'Elective' : 'Electives' }}
-          </p>
+        <!-- Refined Total Courses Box -->
+        <div class="bg-yellow-200 rounded-lg p-6 mb-6 text-center">
+          <h3 class="font-medium mb-2">Total Courses ({{ semesterInfo }})</h3>
+          <p class="text-4xl font-bold text-gray-800">{{ currentCourses }}</p>
+          <p class="text-sm text-gray-600 mb-4">{{ currentElectives }} {{ currentElectives === 1 ? 'Elective' : 'Electives' }}</p>
+          <button
+            @click="toggleSubjectDetails"
+            class="px-5 py-2 bg-white text-black border border-black/20 rounded-full hover:bg-gray-100 transition"
+          >
+            {{ showSubjectDetails ? 'Hide Details' : 'Show Details' }}
+          </button>
         </div>
 
-        <!-- Today's Classes -->
-        <div class="mb-6">
-          <h3 class="font-medium mb-3">Yesterday's Classes</h3>
-          <div v-if="todayClasses.length">
-            <div
-              v-for="(cls, idx) in todayClasses"
-              :key="idx"
-              :class="['rounded-lg p-4 mb-3', getClassStatusColor(cls.status)]"
-            >
-              <div class="flex justify-between">
-                <div>
-                  <p class="text-xs text-gray-600">{{ cls.time }}</p>
-                  <p class="font-medium">{{ cls.subject }}</p>
-                </div>
-                <div class="text-right">
-                  <p class="text-xs italic">{{ cls.venue }}</p>
-                  <p class="text-xs italic">{{ cls.status }}</p>
+        <!-- Current Session Subject Details -->
+        <div v-if="showSubjectDetails && currentSessionSubjects.length > 0" class="mb-6">
+          <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="bg-gradient-to-r from-green-100 to-blue-100 px-6 py-4 border-b">
+              <h3 class="text-lg font-semibold text-gray-800">Current Session Subjects - {{ semesterInfo }}</h3>
+              <p class="text-sm text-gray-600 mt-1">{{ currentSessionSubjects.length }} subjects enrolled</p>
+            </div>
+            <div class="p-6">
+              <div class="grid gap-4">
+                <div 
+                  v-for="subject in currentSessionSubjects" 
+                  :key="`${subject.kod_subjek}-${subject.seksyen}`"
+                  class="border rounded-lg p-4 hover:shadow-md transition-shadow bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200"
+                >
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <h4 class="font-semibold text-lg text-gray-800 mb-1">
+                        {{ subject.nama_subjek || subject.kod_subjek }}
+                      </h4>
+                      <p class="text-md text-blue-700 font-medium mb-1">
+                        {{ subject.kod_subjek }}
+                      </p>
+                      <p class="text-sm text-gray-600">
+                        Section {{ subject.seksyen }}
+                      </p>
+                    </div>
+                    <div class="flex flex-col items-end space-y-2">
+                      <div class="flex space-x-2">
+                        <span 
+                          v-if="subject.kod_subjek.startsWith('U')"
+                          class="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full"
+                        >
+                          Elective
+                        </span>
+                        <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                          {{ subject.kod_subjek.startsWith('U') ? '2' : '3' }} Credits
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <p v-else class="text-center text-gray-500 py-2">No classes today</p>
         </div>
 
-        <!-- Upcoming Classes -->
+        <!-- Today's Classes -->
+        <div class="mb-6">
+          <h3 class="font-medium mb-3">Today's Classes – {{ todayName }}</h3>
+          <div v-if="!isDataLoaded" class="text-center text-gray-500 py-2">
+            Loading...
+          </div>
+          <div v-else-if="todayClasses.length">
+            <div v-for="(cls, idx) in todayClasses" :key="idx" :class="['rounded-lg p-4 mb-3', getClassStatusColor(cls.status)]">
+              <div class="flex justify-between">
+                <div>
+                  <p class="text-xs text-gray-600">{{ cls.time }}</p>
+                  <p class="font-medium">{{ cls.subject }}</p>
+                  <p class="text-sm text-gray-500">{{ cls.subjectName }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-xs italic">{{ cls.venue }}</p>
+                  <p v-if="cls.status" class="text-xs italic">{{ cls.status }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p v-else-if="isWeekend" class="text-center text-gray-500 py-2">No classes today</p>
+          <p v-else class="text-center text-gray-500 py-2">No classes scheduled for today</p>
+        </div>
+
+        <!-- Upcoming -->
         <div class="mb-6">
           <h3 class="font-medium mb-3">Upcoming</h3>
-          <div v-if="upcomingClasses.length">
-            <div
-              v-for="(cls, idx) in upcomingClasses"
-              :key="idx"
-              class="bg-purple-100 rounded-lg p-4 mb-3"
-            >
+          <div v-if="!isDataLoaded" class="text-center text-gray-500 py-2">
+            Loading...
+          </div>
+          <div v-else-if="upcomingClasses.length">
+            <div v-for="(cls, idx) in upcomingClasses" :key="idx" class="bg-blue-50 rounded-lg p-4 mb-3">
               <div class="flex justify-between">
                 <div>
                   <p class="text-xs text-gray-600">{{ cls.day }} {{ cls.time }}</p>
                   <p class="font-medium">{{ cls.subject }}</p>
+                  <p class="text-sm text-gray-500">{{ cls.subjectName }}</p>
                 </div>
                 <div class="text-right">
                   <p class="text-xs italic">{{ cls.venue }}</p>
@@ -99,25 +146,29 @@
           <p v-else class="text-center text-gray-500 py-2">No upcoming classes</p>
         </div>
 
-        <!-- Announcement -->
-        <div class="bg-blue-900 text-white rounded-lg p-4">
-          <h3 class="font-medium mb-2 flex items-center">
-            <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20"
-                 xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1
-                   1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10
-                   18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-            </svg>
-            Announcement
-          </h3>
-          <p class="text-sm">
-            Perhatian kepada semua pelajar UTM,
-            tutorial akhir sebelum peperiksaan akhir semester
-            akan dijalankan seperti yang telah dirancang.
-            Pastikan anda hadir pada sesi tutorial untuk
-            persiapan peperiksaan akhir semester.
-          </p>
+        <!-- Announcements/Notices Section -->
+        <div class="mb-6">
+          <div class="bg-blue-800 rounded-lg p-4 text-white relative overflow-hidden">
+            <!-- Background decoration -->
+            <div class="absolute top-0 right-0 w-24 h-24 bg-blue-700 rounded-full opacity-30 transform translate-x-8 -translate-y-8"></div>
+            <div class="absolute bottom-0 left-0 w-16 h-16 bg-blue-700 rounded-full opacity-20 transform -translate-x-4 translate-y-4"></div>
+            
+            <div class="relative z-10">
+              <div class="flex items-center mb-3">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                <h3 class="font-semibold text-lg">Announcement</h3>
+              </div>
+              <p class="text-blue-100 leading-relaxed mb-3">
+                Perhatian kepada semua pelajar UTM, tutorial akhir sebelum peperiksaan akhir semester akan diadakan seperti yang telah dirancang. Pastikan anda hadir pada sesi tutorial untuk persiapan peperiksaan akhir semester.
+              </p>
+              <div class="flex items-center justify-between">
+                <span class="text-blue-200 text-sm">Academic Office</span>
+                <span class="text-blue-300 text-xs">10:24</span>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
@@ -126,120 +177,268 @@
 
 <script>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Sidebar from '@/components/Sidebar.vue'
 
 export default {
-  name: 'ProfileView',
   components: { Sidebar },
   setup() {
-    const TTMS_API = 'http://web.fc.utm.my/ttms/web_man_webservice_json.cgi'
-
-    const userData = ref({
-      full_name: '',
-      login_name: '',
-      description: '',
-      avatar: '@/assets/user-avatar.jpg'
-    })
+    const router = useRouter()
+    const TTMS = 'http://web.fc.utm.my/ttms/web_man_webservice_json.cgi'
+    const sidebarOpen = ref(false)
+    const userData = ref({})
     const courseCount = ref(0)
     const electivesCount = ref(0)
+    const totalCredits = ref(0)
+    const allCredits = ref(0)
+    const programName = ref('Unknown')
+    const semesterInfo = ref('')
     const todayClasses = ref([])
     const upcomingClasses = ref([])
+    const currentCourses = ref(0)
+    const currentElectives = ref(0)
+    const currentSessionSubjects = ref([])
+    const showSubjectDetails = ref(false)
+    const totalSemesters = ref(0)
+    const currentSemesterNumber = ref(0)
+    const totalProgramSemesters = ref(8) // Default to 8 semesters for most programs
+    const isDataLoaded = ref(false)
+    const subjectColorMap = ref({})
 
-    const hariMap = {1:'SUN',2:'MON',3:'TUE',4:'WED',5:'THU',6:'FRI',7:'SAT'}
-    const now = new Date()
-    const todayNum = now.getDay()             // 1=Sun…7=Sat
-    const todayKey = hariMap[todayNum]
-    const currentHour = now.getHours() + now.getMinutes()/60
+    // Fixed time slot mapping - consistent with timetable view
+    const slotTimes = {
+      '1': '8:00 - 8:50', 
+      '2': '8:00 - 8:50', 
+      '3': '9:00 - 9:50', 
+      '4': '10:00 - 10:50',
+      '5': '11:00 - 11:50', 
+      '6': '12:00 - 12:50', 
+      '7': '1:00 - 1:50', 
+      '8': '2:00 - 2:50',
+      '9': '3:00 - 3:50', 
+      '10': '4:00 - 4:50', 
+      '11': '5:00 - 5:50'
+    }
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    
+    // Fixed day mapping - consistent with timetable view
+    const hariToJsDay = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6} // TTMS day to JS day
+    
+    // Get current Malaysia time
+    function getMalaysiaTime() {
+      return new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kuala_Lumpur"}))
+    }
+
+    const now = getMalaysiaTime()
+    const todayJsDay = now.getDay() // 0=Sunday, 1=Monday, etc.
+    const todayName = dayNames[todayJsDay]
+    const currentHour = now.getHours() + now.getMinutes() / 60
+    const isWeekend = todayJsDay === 0 || todayJsDay === 6 // Sunday or Saturday
+
+    function getClassStatusColor(status) {
+      switch ((status || '').toLowerCase()) {
+        case 'ongoing': return 'bg-red-100'
+        case 'attended': return 'bg-green-100'
+        default: return 'bg-purple-100'
+      }
+    }
+
+    function getSubjectColor(code) {
+      if (!subjectColorMap.value[code]) {
+        const colors = ['bg-rose-100','bg-orange-100','bg-amber-100','bg-lime-100','bg-cyan-100','bg-sky-100']
+        const index = Object.keys(subjectColorMap.value).length % colors.length
+        subjectColorMap.value[code] = colors[index]
+      }
+      return subjectColorMap.value[code]
+    }
+
+    function toggleSubjectDetails() {
+      showSubjectDetails.value = !showSubjectDetails.value
+    }
+
+    // Helper function to convert time slot to decimal hours for comparison
+    function timeSlotToHours(slot) {
+      const slotNum = parseInt(slot)
+      switch(slotNum) {
+        case 1:
+        case 2: return 8
+        case 3: return 9
+        case 4: return 10
+        case 5: return 11
+        case 6: return 12
+        case 7: return 13
+        case 8: return 14
+        case 9: return 15
+        case 10: return 16
+        case 11: return 17
+        default: return slotNum
+      }
+    }
 
     async function fetchJSON(params) {
-      const url = `${TTMS_API}?${new URLSearchParams(params)}`
+      const url = `${TTMS}?${new URLSearchParams(params)}`
       const res = await fetch(url)
       return res.json()
     }
 
     async function loadDashboard() {
-      // 1) load userData
-      const session = JSON.parse(localStorage.getItem('web.fc.utm.my_usersession') || '{}')
-      if (!session.login_name) return
-      Object.assign(userData.value, {
-        full_name: session.full_name,
-        login_name: session.login_name,
-        description: session.description,
-        avatar: session.avatar || userData.value.avatar
-      })
+      try {
+        const session = JSON.parse(localStorage.getItem('web.fc.utm.my_usersession') || '{}')
+        if (!session.login_name) return
 
-      // 2) fetch current session
-      const [ses] = await fetchJSON({ entity: 'sesisemester' })
-      const { sesi, semester } = ses
+        userData.value = session
 
-      // 3) enrolled subjects
-      const subs = await fetchJSON({ entity: 'pelajar_subjek', no_matrik: session.login_name })
-      const enrolled = subs.filter(s =>
-        String(s.sesi) === String(sesi) &&
-        String(s.semester) === String(semester)
-      )
-      courseCount.value = enrolled.length
-      electivesCount.value = enrolled.filter(s => s.kod_subjek.startsWith('U')).length
+        // Load all data in parallel for faster loading
+        const [sesData, subjects] = await Promise.all([
+          fetchJSON({ entity: 'sesisemester' }).then(data => data[0]),
+          fetchJSON({ entity: 'pelajar_subjek', no_matrik: session.login_name })
+        ])
 
-      // 4) fetch all timetable entries
-      const all = []
-      for (let s of enrolled) {
-        const list = await fetchJSON({
-          entity: 'jadual_subjek',
-          sesi, semester,
-          kod_subjek: s.kod_subjek,
-          seksyen: s.seksyen
+        const { sesi, semester } = sesData
+        semesterInfo.value = `${sesi} / ${semester}`
+
+        courseCount.value = subjects.length
+        electivesCount.value = subjects.filter(s => s.kod_subjek.startsWith('U')).length
+        totalCredits.value = subjects.reduce((acc, s) => acc + (s.kod_subjek.startsWith('U') ? 2 : 3), 0)
+        allCredits.value = totalCredits.value
+        programName.value = subjects[0]?.kod_program || 'Unknown'
+
+        // Calculate total unique semesters the student has registered for
+        const uniqueSemesters = new Set()
+        subjects.forEach(s => {
+          uniqueSemesters.add(`${s.sesi}/${s.semester}`)
         })
-        list.forEach(item => {
-          const dayNum = item.hari
-          const day    = hariMap[dayNum]
-          const slot   = item.masa / 1
-          const time   = `${slot}:00 - ${slot}:50`
-          all.push({
-            dayNum, day, time,
-            subject: s.kod_subjek,
-            venue: item.ruang.nama_ruang_singkatan,
-            status:
-              dayNum === todayNum
-                ? (slot <= currentHour ? 'Attended' : 'Ongoing')
-                : ''
+        totalSemesters.value = uniqueSemesters.size
+
+        // Calculate current semester number based on registered semesters
+        // Sort all semesters chronologically and find position of current semester
+        const allSemesterKeys = Array.from(uniqueSemesters).sort()
+        const currentSemesterKey = `${sesi}/${semester}`
+        currentSemesterNumber.value = allSemesterKeys.indexOf(currentSemesterKey) + 1
+
+        // Determine total program semesters based on program type
+        const program = programName.value.toLowerCase()
+        if (program.includes('phd') || program.includes('doctor')) {
+          totalProgramSemesters.value = 6 // PhD typically 3 years = 6 semesters
+        } else if (program.includes('master') || program.includes('msc') || program.includes('ma')) {
+          totalProgramSemesters.value = 4 // Masters typically 2 years = 4 semesters
+        } else if (program.includes('diploma')) {
+          totalProgramSemesters.value = 6 // Diploma typically 3 years = 6 semesters
+        } else {
+          totalProgramSemesters.value = 8 // Bachelor typically 4 years = 8 semesters
+        }
+
+        const current = subjects.filter(s => s.sesi === sesi && s.semester === semester)
+        currentCourses.value = current.length
+        currentElectives.value = current.filter(s => s.kod_subjek.startsWith('U')).length
+        
+        // Store current session subjects for details view
+        currentSessionSubjects.value = current
+
+        // Fetch all schedules in parallel
+        const schedulePromises = current.map(s => 
+          fetchJSON({ 
+            entity: 'jadual_subjek', 
+            sesi, 
+            semester, 
+            kod_subjek: s.kod_subjek, 
+            seksyen: s.seksyen 
+          }).then(list => ({ subject: s, schedule: list }))
+        )
+
+        const schedules = await Promise.all(schedulePromises)
+        const all = []
+
+        // Create a map for subject names
+        const subjectNameMap = {}
+        for (const subject of current) {
+          subjectNameMap[subject.kod_subjek] = subject.nama_subjek || subject.kod_subjek
+        }
+
+        for (const { subject: s, schedule: list } of schedules) {
+          for (const item of list) {
+            const ttmsDay = item.hari // 1=Sunday, 2=Monday, etc. in TTMS
+            const jsDay = hariToJsDay[ttmsDay] // Convert to JS day
+            const slot = item.masa.toString()
+            const time = slotTimes[slot] || `${slot}:00 - ${slot}:50`
+            
+            let status = ''
+            if (jsDay === todayJsDay) {
+              const classStartHour = timeSlotToHours(slot)
+              const classEndHour = classStartHour + 0.83 // 50 minutes = 0.83 hours
+              
+              if (currentHour >= classStartHour && currentHour <= classEndHour) {
+                status = 'Ongoing'
+              } else if (currentHour > classEndHour) {
+                status = 'Attended'
+              }
+            }
+
+            all.push({
+              jsDay,
+              ttmsDay,
+              day: dayNames[jsDay],
+              time,
+              subject: s.kod_subjek,
+              subjectName: s.nama_subjek || s.kod_subjek,
+              venue: item.ruang?.nama_ruang_singkatan || 'TBA',
+              status,
+              sortTime: timeSlotToHours(slot)
+            })
+          }
+        }
+
+        // Today's classes
+        todayClasses.value = all
+          .filter(e => e.jsDay === todayJsDay)
+          .sort((a, b) => a.sortTime - b.sortTime)
+
+        // Upcoming classes (next 7 days, excluding today)
+        upcomingClasses.value = all
+          .filter(e => {
+            if (e.jsDay === todayJsDay) return false // Exclude today
+            
+            // Calculate days until this class
+            let daysUntil = e.jsDay - todayJsDay
+            if (daysUntil <= 0) daysUntil += 7 // Next week
+            
+            return daysUntil <= 7
           })
-        })
-      }
+          .sort((a, b) => {
+            // Sort by day, then by time
+            let aDaysUntil = a.jsDay - todayJsDay
+            if (aDaysUntil <= 0) aDaysUntil += 7
+            
+            let bDaysUntil = b.jsDay - todayJsDay
+            if (bDaysUntil <= 0) bDaysUntil += 7
+            
+            return aDaysUntil - bDaysUntil || a.sortTime - b.sortTime
+          })
+          .slice(0, 10) // Limit to 10 upcoming classes
 
-      todayClasses.value = all.filter(e => e.dayNum === todayNum)
-      upcomingClasses.value = all
-        .filter(e => e.dayNum > todayNum)
-        .sort((a,b) => a.dayNum - b.dayNum || a.time.localeCompare(b.time))
+      } catch (error) {
+        console.error('Error loading dashboard:', error)
+      } finally {
+        // Mark data as loaded regardless of success or failure
+        isDataLoaded.value = true
+      }
     }
 
-    function getClassStatusColor(status) {
-      switch(status.toLowerCase()) {
-        case 'ongoing':  return 'bg-red-100'
-        case 'attended': return 'bg-green-100'
-        default:         return 'bg-purple-100'
-      }
+    function goToSubjects() {
+      router.push('/subject-list')
     }
 
     onMounted(loadDashboard)
-    const sidebarOpen = ref(false)
 
     return {
-      userData, courseCount, electivesCount,
-      todayClasses, upcomingClasses,
-      getClassStatusColor,
-      sidebarOpen
+      sidebarOpen, userData, courseCount, electivesCount, totalCredits,
+      allCredits, programName, semesterInfo, todayClasses, upcomingClasses,
+      getClassStatusColor, getSubjectColor, todayName, isWeekend,
+      currentCourses, currentElectives, currentSessionSubjects, 
+      showSubjectDetails, toggleSubjectDetails, totalSemesters, 
+      currentSemesterNumber, totalProgramSemesters, isDataLoaded, goToSubjects
     }
   }
 }
 </script>
-
-
-<style>
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  background-color: #ffffff;
-}
-</style>
