@@ -282,148 +282,148 @@ export default {
       return res.json()
     }
 
-    async function loadDashboard() {
-      try {
-        const session = JSON.parse(localStorage.getItem('web.fc.utm.my_usersession') || '{}')
-        if (!session.login_name) return
+ async function loadDashboard() {
+  try {
+    const session = JSON.parse(localStorage.getItem('web.fc.utm.my_usersession') || '{}')
+    if (!session.login_name || !session.session_id) return
 
-        userData.value = session
+    userData.value = session
+    const userId = session.login_name
+    const sessionId = session.session_id
 
-        // Load all data in parallel for faster loading
-        const [sesData, subjects] = await Promise.all([
-          fetchJSON({ entity: 'sesisemester' }).then(data => data[0]),
-          fetchJSON({ entity: 'pelajar_subjek', no_matrik: session.login_name })
-        ])
+    // -----------------------
+    // Step 1: Fetch sesisemester (session info)
+    // -----------------------
+    let sesData
+    const sesCacheKey = 'current_session'
+    const cachedSesi = localStorage.getItem(sesCacheKey)
+    if (cachedSesi) {
+      sesData = JSON.parse(cachedSesi)
+    } else {
+      const [fetched] = await fetchJSON({ entity: 'sesisemester' })
+      sesData = fetched
+      localStorage.setItem(sesCacheKey, JSON.stringify(sesData))
+    }
 
-        const { sesi, semester } = sesData
-        semesterInfo.value = `${sesi} / ${semester}`
+    const { sesi, semester } = sesData
+    semesterInfo.value = `${sesi} / ${semester}`
 
-        courseCount.value = subjects.length
-        electivesCount.value = subjects.filter(s => s.kod_subjek.startsWith('U')).length
-        totalCredits.value = subjects.reduce((acc, s) => acc + (s.kod_subjek.startsWith('U') ? 2 : 3), 0)
-        allCredits.value = totalCredits.value
-        programName.value = subjects[0]?.kod_program || 'Unknown'
+    // -----------------------
+    // Step 2: Fetch Subjects
+    // -----------------------
+    const subjectsCacheKey = `pelajar_subjek_${userId}`
+    let subjects
+    const cachedSubjects = localStorage.getItem(subjectsCacheKey)
+    if (cachedSubjects) {
+      subjects = JSON.parse(cachedSubjects)
+    } else {
+      subjects = await fetchJSON({ entity: 'pelajar_subjek', no_matrik: userId })
+      localStorage.setItem(subjectsCacheKey, JSON.stringify(subjects))
+    }
 
-        // Calculate total unique semesters the student has registered for
-        const uniqueSemesters = new Set()
-        subjects.forEach(s => {
-          uniqueSemesters.add(`${s.sesi}/${s.semester}`)
+    courseCount.value = subjects.length
+    electivesCount.value = subjects.filter(s => s.kod_subjek.startsWith('U')).length
+    totalCredits.value = subjects.reduce((acc, s) => acc + (s.kod_subjek.startsWith('U') ? 2 : 3), 0)
+    allCredits.value = totalCredits.value
+    programName.value = subjects[0]?.kod_program || 'Unknown'
+
+    // -----------------------
+    // Step 3: Calculate Semester Info
+    // -----------------------
+    const uniqueSemesters = new Set()
+    subjects.forEach(s => uniqueSemesters.add(`${s.sesi}/${s.semester}`))
+    totalSemesters.value = uniqueSemesters.size
+
+    const sortedKeys = Array.from(uniqueSemesters).sort()
+    const currentKey = `${sesi}/${semester}`
+    currentSemesterNumber.value = sortedKeys.indexOf(currentKey) + 1
+
+    const program = programName.value.toLowerCase()
+    if (program.includes('phd') || program.includes('doctor')) totalProgramSemesters.value = 6
+    else if (program.includes('master') || program.includes('msc')) totalProgramSemesters.value = 4
+    else if (program.includes('diploma')) totalProgramSemesters.value = 6
+    else totalProgramSemesters.value = 8
+
+    const current = subjects.filter(s => s.sesi === sesi && s.semester === semester)
+    currentCourses.value = current.length
+    currentElectives.value = current.filter(s => s.kod_subjek.startsWith('U')).length
+    currentSessionSubjects.value = current
+
+    // -----------------------
+    // Step 4: Fetch Schedules (per subject, cached)
+    // -----------------------
+    const hariToJsDay = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6}
+    const all = []
+
+    for (const s of current) {
+      const scheduleKey = `jadual_${sesi}_${semester}_${s.kod_subjek}_${s.seksyen}`
+      let schedule
+      const cachedSchedule = localStorage.getItem(scheduleKey)
+      if (cachedSchedule) {
+        schedule = JSON.parse(cachedSchedule)
+      } else {
+        schedule = await fetchJSON({
+          entity: 'jadual_subjek',
+          sesi, semester,
+          kod_subjek: s.kod_subjek,
+          seksyen: s.seksyen
         })
-        totalSemesters.value = uniqueSemesters.size
+        localStorage.setItem(scheduleKey, JSON.stringify(schedule))
+      }
 
-        // Calculate current semester number based on registered semesters
-        // Sort all semesters chronologically and find position of current semester
-        const allSemesterKeys = Array.from(uniqueSemesters).sort()
-        const currentSemesterKey = `${sesi}/${semester}`
-        currentSemesterNumber.value = allSemesterKeys.indexOf(currentSemesterKey) + 1
+      for (const item of schedule) {
+        const jsDay = hariToJsDay[item.hari]
+        const slot = item.masa.toString()
+        const time = slotTimes[slot] || `${slot}:00 - ${slot}:50`
 
-        // Determine total program semesters based on program type
-        const program = programName.value.toLowerCase()
-        if (program.includes('phd') || program.includes('doctor')) {
-          totalProgramSemesters.value = 6 // PhD typically 3 years = 6 semesters
-        } else if (program.includes('master') || program.includes('msc') || program.includes('ma')) {
-          totalProgramSemesters.value = 4 // Masters typically 2 years = 4 semesters
-        } else if (program.includes('diploma')) {
-          totalProgramSemesters.value = 6 // Diploma typically 3 years = 6 semesters
-        } else {
-          totalProgramSemesters.value = 8 // Bachelor typically 4 years = 8 semesters
-        }
-
-        const current = subjects.filter(s => s.sesi === sesi && s.semester === semester)
-        currentCourses.value = current.length
-        currentElectives.value = current.filter(s => s.kod_subjek.startsWith('U')).length
-        
-        // Store current session subjects for details view
-        currentSessionSubjects.value = current
-
-        // Fetch all schedules in parallel
-        const schedulePromises = current.map(s => 
-          fetchJSON({ 
-            entity: 'jadual_subjek', 
-            sesi, 
-            semester, 
-            kod_subjek: s.kod_subjek, 
-            seksyen: s.seksyen 
-          }).then(list => ({ subject: s, schedule: list }))
-        )
-
-        const schedules = await Promise.all(schedulePromises)
-        const all = []
-
-        // Create a map for subject names
-        const subjectNameMap = {}
-        for (const subject of current) {
-          subjectNameMap[subject.kod_subjek] = subject.nama_subjek || subject.kod_subjek
-        }
-
-        for (const { subject: s, schedule: list } of schedules) {
-          for (const item of list) {
-            const ttmsDay = item.hari // 1=Sunday, 2=Monday, etc. in TTMS
-            const jsDay = hariToJsDay[ttmsDay] // Convert to JS day
-            const slot = item.masa.toString()
-            const time = slotTimes[slot] || `${slot}:00 - ${slot}:50`
-            
-            let status = ''
-            if (jsDay === todayJsDay) {
-              const classStartHour = timeSlotToHours(slot)
-              const classEndHour = classStartHour + 0.83 // 50 minutes = 0.83 hours
-              
-              if (currentHour >= classStartHour && currentHour <= classEndHour) {
-                status = 'Ongoing'
-              } else if (currentHour > classEndHour) {
-                status = 'Attended'
-              }
-            }
-
-            all.push({
-              jsDay,
-              ttmsDay,
-              day: dayNames[jsDay],
-              time,
-              subject: s.kod_subjek,
-              subjectName: s.nama_subjek || s.kod_subjek,
-              venue: item.ruang?.nama_ruang_singkatan || 'TBA',
-              status,
-              sortTime: timeSlotToHours(slot)
-            })
+        let status = ''
+        if (jsDay === todayJsDay) {
+          const classStartHour = timeSlotToHours(slot)
+          const classEndHour = classStartHour + 0.83
+          if (currentHour >= classStartHour && currentHour <= classEndHour) {
+            status = 'Ongoing'
+          } else if (currentHour > classEndHour) {
+            status = 'Attended'
           }
         }
 
-        // Today's classes
-        todayClasses.value = all
-          .filter(e => e.jsDay === todayJsDay)
-          .sort((a, b) => a.sortTime - b.sortTime)
-
-        // Upcoming classes (next 7 days, excluding today)
-        upcomingClasses.value = all
-          .filter(e => {
-            if (e.jsDay === todayJsDay) return false // Exclude today
-            
-            // Calculate days until this class
-            let daysUntil = e.jsDay - todayJsDay
-            if (daysUntil <= 0) daysUntil += 7 // Next week
-            
-            return daysUntil <= 7
-          })
-          .sort((a, b) => {
-            // Sort by day, then by time
-            let aDaysUntil = a.jsDay - todayJsDay
-            if (aDaysUntil <= 0) aDaysUntil += 7
-            
-            let bDaysUntil = b.jsDay - todayJsDay
-            if (bDaysUntil <= 0) bDaysUntil += 7
-            
-            return aDaysUntil - bDaysUntil || a.sortTime - b.sortTime
-          })
-          .slice(0, 10) // Limit to 10 upcoming classes
-
-      } catch (error) {
-        console.error('Error loading dashboard:', error)
-      } finally {
-        // Mark data as loaded regardless of success or failure
-        isDataLoaded.value = true
+        all.push({
+          jsDay,
+          ttmsDay: item.hari,
+          day: dayNames[jsDay],
+          time,
+          subject: s.kod_subjek,
+          subjectName: s.nama_subjek || s.kod_subjek,
+          venue: item.ruang?.nama_ruang_singkatan || 'TBA',
+          status,
+          sortTime: timeSlotToHours(slot)
+        })
       }
     }
+
+    todayClasses.value = all.filter(e => e.jsDay === todayJsDay).sort((a, b) => a.sortTime - b.sortTime)
+    upcomingClasses.value = all
+      .filter(e => {
+        if (e.jsDay === todayJsDay) return false
+        let daysUntil = e.jsDay - todayJsDay
+        if (daysUntil <= 0) daysUntil += 7
+        return daysUntil <= 7
+      })
+      .sort((a, b) => {
+        let aDaysUntil = a.jsDay - todayJsDay
+        if (aDaysUntil <= 0) aDaysUntil += 7
+        let bDaysUntil = b.jsDay - todayJsDay
+        if (bDaysUntil <= 0) bDaysUntil += 7
+        return aDaysUntil - bDaysUntil || a.sortTime - b.sortTime
+      })
+      .slice(0, 10)
+
+  } catch (err) {
+    console.error('[Dashboard] Error loading dashboard:', err)
+  } finally {
+    isDataLoaded.value = true
+  }
+}
 
     function goToSubjects() {
       router.push('/subject-list')
