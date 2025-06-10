@@ -19,7 +19,7 @@
           </button>
           <h1 class="text-xl font-bold">Profile</h1>
           <div class="h-8 w-8 rounded-full overflow-hidden">
-            <img :src="user.avatar" alt="Avatar" class="object-cover h-full w-full"/>
+            <img src="@/assets/user-avatar.jpg" alt="Avatar" class="object-cover h-full w-full"/>
           </div>
         </header>
   
@@ -28,7 +28,7 @@
           <!-- Avatar & Name -->
           <div class="flex flex-col items-center mb-6">
             <div class="h-24 w-24 rounded-full overflow-hidden shadow-md mb-4">
-              <img :src="user.avatar" alt="Avatar" class="object-cover h-full w-full"/>
+              <img src="@/assets/user-avatar.jpg" alt="Avatar" class="object-cover h-full w-full"/>
             </div>
             <h2 class="text-lg font-semibold">{{ user.full_name }}</h2>
             <p class="text-sm text-gray-500">@{{ user.login_name }}</p>
@@ -88,7 +88,7 @@
         this.user.description = userData.description || '';
         this.user.session_id = userData.session_id || '';
         this.user.email = userData.email || '';
-        this.user.avatar = '@/assets/user-avatar.jpg'; // default avatar if not provided
+        this.user.avatar = '@/assets/user-avatar.jpg'; // default avatar 
       } else {
         console.error('No user session found! Redirecting to login.');
         this.$router.push({ name: 'Login' });
