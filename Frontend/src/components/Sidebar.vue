@@ -42,6 +42,15 @@
           </router-link>
 
           <router-link
+            to="/mycourses"
+            class="flex items-center p-2 rounded hover:bg-gray-100"
+            @click="$emit('update:open', false)"
+          >
+            <BookOpenIcon class="w-6 h-6"/>
+            <span class="ml-3">My Courses</span>
+          </router-link>
+
+          <router-link
             to="/timetable"
             class="flex items-center p-2 rounded hover:bg-gray-100"
             @click="$emit('update:open', false)"
@@ -68,14 +77,57 @@
             <span class="ml-3">Analytics</span>
           </router-link>
 
-          <router-link
-            to="/More"
-            class="flex items-center p-2 rounded hover:bg-gray-100"
-            @click="$emit('update:open', false)"
-          >
-            <EllipsisVerticalIcon class="w-6 h-6"/>
-            <span class="ml-3">More</span>
-          </router-link>
+          <!-- More Section with Submenu -->
+          <div>
+            <button
+              @click="toggleMore"
+              class="flex items-center w-full p-2 rounded hover:bg-gray-100"
+            >
+              <EllipsisVerticalIcon class="w-6 h-6"/>
+              <span class="ml-3">More</span>
+              <ChevronDownIcon 
+                class="w-5 h-5 ml-auto transition-transform"
+                :class="{ 'rotate-180': isMoreOpen }"
+              />
+            </button>
+            <div 
+              v-show="isMoreOpen"
+              class="ml-6 space-y-1"
+            >
+              <router-link
+                to="/facultycourses"
+                class="flex items-center p-2 rounded hover:bg-gray-100"
+                @click="$emit('update:open', false)"
+              >
+                <AcademicCapIcon class="w-5 h-5"/>
+                <span class="ml-3 text-sm">Faculty Courses</span>
+              </router-link>
+              <router-link
+                to="/lecturer-schedule"
+                class="flex items-center p-2 rounded hover:bg-gray-100"
+                @click="$emit('update:open', false)"
+              >
+                <UserGroupIcon class="w-5 h-5"/>
+                <span class="ml-3 text-sm">Lecturer Schedule</span>
+              </router-link>
+              <router-link
+                to="/students-by-section"
+                class="flex items-center p-2 rounded hover:bg-gray-100"
+                @click="$emit('update:open', false)"
+              >
+                <UsersIcon class="w-5 h-5"/>
+                <span class="ml-3 text-sm">Students by Section</span>
+              </router-link>
+              <router-link
+                to="/room-availability"
+                class="flex items-center p-2 rounded hover:bg-gray-100"
+                @click="$emit('update:open', false)"
+              >
+                <BuildingOfficeIcon class="w-5 h-5"/>
+                <span class="ml-3 text-sm">Room Availability</span>
+              </router-link>
+            </div>
+          </div>
         </nav>
       </div>
 
@@ -102,16 +154,29 @@ import {
   ChartBarIcon,
   EllipsisVerticalIcon,
   XMarkIcon,
-  ArrowLeftOnRectangleIcon
+  ArrowLeftOnRectangleIcon,
+  BookOpenIcon,
+  AcademicCapIcon,
+  ChevronDownIcon,
+  UserGroupIcon,
+  UsersIcon,
+  BuildingOfficeIcon
 } from '@heroicons/vue/24/solid'
 
 export default {
   name: 'Sidebar',
   props: { open: Boolean },
   emits: ['update:open'],
+  data() {
+    return {
+      isMoreOpen: false
+    }
+  },
   components: {
     HomeIcon, CalendarIcon, UserIcon,
-    ChartBarIcon, EllipsisVerticalIcon, XMarkIcon, ArrowLeftOnRectangleIcon
+    ChartBarIcon, EllipsisVerticalIcon, XMarkIcon, 
+    ArrowLeftOnRectangleIcon, BookOpenIcon, AcademicCapIcon,
+    ChevronDownIcon, UserGroupIcon, UsersIcon, BuildingOfficeIcon
   },
   setup(_, { emit }) {
     const router = useRouter()
@@ -124,6 +189,17 @@ export default {
     }
 
     return { logout }
+  },
+  methods: {
+    toggleMore() {
+      this.isMoreOpen = !this.isMoreOpen
+    }
   }
 }
 </script>
+
+<style scoped>
+.rotate-180 {
+  transform: rotate(180deg);
+}
+</style>
