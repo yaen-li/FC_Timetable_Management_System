@@ -38,7 +38,7 @@
               class="flex items-center space-x-3 p-4 bg-gray-100 hover:bg-gray-200 rounded-lg shadow-sm"
             >
               <UserGroupIcon class="w-6 h-6 text-green-600" />
-              <span class="text-gray-800 font-medium">View Lecturer Schedule</span>
+              <span class="text-gray-800 font-medium">Lecturers List</span>
             </router-link>
   
             <router-link
@@ -46,7 +46,7 @@
               class="flex items-center space-x-3 p-4 bg-gray-100 hover:bg-gray-200 rounded-lg shadow-sm"
             >
               <AcademicCapIcon class="w-6 h-6 text-yellow-600" />
-              <span class="text-gray-800 font-medium">View Students in Section</span>
+              <span class="text-gray-800 font-medium">Students List</span>
             </router-link>
   
             <router-link
