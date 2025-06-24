@@ -8,7 +8,6 @@ import SubjectListView from '@/views/SubjectListView.vue'
 import LecturerScheduleView from '@/views/LecturerScheduleView.vue'
 import StudentsBySectionView from '@/views/StudentsBySectionView.vue'
 import RoomAvailabilityView from '@/views/RoomAvailabilityView.vue'
-import StudentListView from '@/views/StudentListView.vue'
 
 const routes = [
   { path: '/', name: 'Login', component: LoginView },
@@ -21,8 +20,7 @@ const routes = [
   { path: '/subject-list', name: 'SubjectList', component: SubjectListView },
   { path: '/lecturer-schedule', name: 'LecturerSchedule', component: LecturerScheduleView },
   { path: '/students-by-section', name: 'StudentsBySection', component: StudentsBySectionView },
-  { path: '/room-availability', name: 'RoomAvailability', component: RoomAvailabilityView },
-  { path: '/student-list', name: 'StudentList', component: StudentListView }
+  { path: '/room-availability', name: 'RoomAvailability', component: RoomAvailabilityView }
 ]
 
 export default createRouter({
