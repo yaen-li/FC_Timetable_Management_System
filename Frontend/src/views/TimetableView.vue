@@ -1,233 +1,264 @@
 <template>
-    <div class="relative min-h-screen bg-gray-50">
-      <!-- Sidebar -->
-      <Sidebar
-        :open="sidebarOpen"
-        @update:open="val => sidebarOpen = val"
-      />
-  
-      <!-- Main content -->
-      <div class="flex flex-col">
-        <!-- Header -->
-        <header class="flex items-center justify-between p-4 bg-white shadow">
-          <button @click="sidebarOpen = true" class="p-2">
-            <!-- Hamburger Icon -->
-            <svg class="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-  
-          <h1 class="text-xl font-semibold text-gray-800">My Timetable</h1>
-  
-          <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-300">
-            <img src="@/assets/user-avatar.jpg"
-                 alt="Avatar"
-                 class="object-cover h-full w-full"
-                 onerror="this.style.display='none'" />
+  <div class="relative min-h-screen bg-gray-50">
+    <!-- Sidebar -->
+    <Sidebar
+      :open="sidebarOpen"
+      @update:open="val => sidebarOpen = val"
+    />
+
+    <!-- Main content -->
+    <div class="flex flex-col">
+      <!-- Header -->
+      <header class="flex items-center justify-between p-4 bg-white shadow">
+        <button @click="sidebarOpen = true" class="p-2">
+          <!-- Hamburger Icon -->
+          <svg class="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <h1 class="text-xl font-semibold text-gray-800">My Timetable</h1>
+
+        <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-300">
+          <img src="@/assets/user-avatar.jpg"
+               alt="Avatar"
+               class="object-cover h-full w-full"
+               onerror="this.style.display='none'" />
+        </div>
+      </header>
+
+      <!-- Timetable Content -->
+      <main class="p-4 sm:p-6 bg-white flex-1 overflow-auto">
+        <!-- Session Selection -->
+        <div class="mb-6">
+          <h2 class="text-xl font-semibold mb-4">Academic Sessions</h2>
+          
+          <!-- First Session (Always Visible) -->
+          <div 
+            v-if="availableCombinedSessions.length > 0"
+            @click="selectCombinedSession(availableCombinedSessions[0])"
+            class="py-2 px-3 cursor-pointer hover:bg-gray-100 flex items-center justify-between rounded"
+            :class="{'bg-blue-50': isSelectedCombinedSession(availableCombinedSessions[0])}"
+          >
+            <div class="flex items-center">
+              <span class="mr-2">▸</span>
+              <span class="font-medium">
+                {{ availableCombinedSessions[0].sesi }} {{ availableCombinedSessions[0].semester }}
+                <span v-if="isCurrentCombinedSession(availableCombinedSessions[0])" class="text-sm text-green-600 ml-1">(Current)</span>
+              </span>
+            </div>
           </div>
-        </header>
-  
-        <!-- Timetable Content -->
-        <main class="p-4 sm:p-6 bg-white flex-1 overflow-auto">
-          <!-- Session/Semester Selection -->
-          <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
-            <h3 class="text-lg font-medium mb-4 text-gray-800">Select Academic Period</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              <div>
-                <label for="sessionSelect" class="block text-sm font-medium text-gray-700 mb-2">
-                  Academic Session
-                </label>
-                <select
-                  id="sessionSelect"
-                  v-model="selectedSession"
-                  @change="onSessionChange"
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  :disabled="loadingSessions"
-                >
-                  <option value="">Select Session</option>
-                  <option
-                    v-for="session in availableSessions"
-                    :key="session.sesi"
-                    :value="session.sesi"
-                  >
-                    {{ session.sesi }} {{ session.sesi === currentSession ? '(Current)' : '' }}
-                  </option>
-                </select>
+          
+          <!-- Dropdown for Other Sessions -->
+          <div class="mt-2">
+            <button 
+              @click="showAllSessions = !showAllSessions" 
+              class="flex items-center text-sm text-blue-600 hover:text-blue-800"
+            >
+              <svg 
+                :class="['w-4 h-4 mr-1 transition-transform', { 'rotate-180': showAllSessions }]"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              {{ showAllSessions ? 'Hide' : 'Show' }} all sessions
+            </button>
+            
+            <div v-if="showAllSessions" class="mt-2 space-y-1 max-w-2xl pl-4 border-l-2 border-gray-200">
+              <div 
+                v-for="(session, index) in availableCombinedSessions.slice(1)" 
+                :key="`${session.sesi}-${session.semester}`"
+                @click="selectCombinedSession(session)"
+                class="py-2 px-3 cursor-pointer hover:bg-gray-100 flex items-center justify-between rounded"
+                :class="{'bg-blue-50': isSelectedCombinedSession(session)}"
+              >
+                <div class="flex items-center">
+                  <span class="mr-2">▸</span>
+                  <span class="font-medium">
+                    {{ session.sesi }} {{ session.semester }}
+                    <span v-if="isCurrentCombinedSession(session)" class="text-sm text-green-600 ml-1">(Current)</span>
+                  </span>
+                </div>
               </div>
-              
-              <div>
-                <label for="semesterSelect" class="block text-sm font-medium text-gray-700 mb-2">
-                  Semester
-                </label>
-                <select
-                  id="semesterSelect"
-                  v-model="selectedSemester"
-                  @change="onSemesterChange"
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  :disabled="!selectedSession || loadingSemesters"
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="loading" class="flex justify-center py-8">
+          <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+          </svg>
+        </div>
+
+        <!-- No Timetable Message -->
+        <div v-else-if="!hasTimetableData" class="text-center py-12">
+          <div class="text-gray-400 mb-4">
+            <svg class="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4v10m6-10v10m-6-4h6"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">No Timetable Found</h3>
+          <p class="text-gray-500">
+            {{ selectedSession && selectedSemester 
+              ? `No classes found for Session ${selectedSession}, Semester ${selectedSemester}` 
+              : 'Please select a session to view timetable' }}
+          </p>
+        </div>
+
+        <!-- Timetable Display -->
+        <div v-else class="mt-2 bg-white rounded-lg border p-3">
+          <!-- Daily View Timetable -->
+          <div class="mb-4">
+            <div class="flex justify-between items-center mb-2">
+              <h6 class="text-sm font-medium text-gray-700">Daily View</h6>
+              <div class="flex space-x-1">
+                <button 
+                  v-for="day in displayDays" 
+                  :key="day"
+                  @click="selectedDay = day"
+                  :class="[
+                    'px-2 py-1 text-xs rounded',
+                    selectedDay === day ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                  ]"
                 >
-                  <option value="">Select Semester</option>
-                  <option
-                    v-for="semester in availableSemesters"
-                    :key="semester.semester"
-                    :value="semester.semester"
-                  >
-                    Semester {{ semester.semester }} {{ semester.semester === currentSemester && selectedSession === currentSession ? '(Current)' : '' }}
-                  </option>
-                </select>
-              </div>
-              
-              <div>
-                <button
-                  @click="loadTimetableForPeriod"
-                  :disabled="!selectedSession || !selectedSemester || loading"
-                  class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
-                >
-                  {{ loading ? 'Loading...' : 'Load Timetable' }}
+                  {{ day }}
                 </button>
               </div>
             </div>
             
-            <!-- Current Selection Display -->
-            <div v-if="selectedSession && selectedSemester" class="mt-4 p-3 bg-blue-50 rounded-md">
-              <p class="text-sm text-blue-800">
-                <span class="font-medium">Viewing:</span> 
-                Session {{ selectedSession }}, Semester {{ selectedSemester }}
-                <span v-if="selectedSession === currentSession && selectedSemester === currentSemester" class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                  Current Period
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <!-- View Mode Toggle -->
-          <div class="flex justify-end mb-4">
-            <button
-              @click="viewMode = viewMode==='table' ? 'daily' : 'table'"
-              class="px-4 py-2 rounded border hover:bg-gray-100 bg-blue-500 text-white font-medium shadow-md"
-            >
-              {{ viewMode === 'table' ? 'Switch to Daily View' : 'Switch to Grid View' }}
-            </button>
-          </div>
-
-          <!-- Loading State -->
-          <div v-if="loading" class="flex justify-center py-8">
-            <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-            </svg>
-          </div>
-
-          <!-- No Timetable Message -->
-          <div v-else-if="!hasTimetableData" class="text-center py-12">
-            <div class="text-gray-400 mb-4">
-              <svg class="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4v10m6-10v10m-6-4h6"></path>
-              </svg>
-            </div>
-            <h3 class="text-lg font-medium text-gray-900 mb-2">No Timetable Found</h3>
-            <p class="text-gray-500">
-              {{ selectedSession && selectedSemester 
-                ? `No classes found for Session ${selectedSession}, Semester ${selectedSemester}` 
-                : 'Please select a session and semester to view timetable' }}
-            </p>
-          </div>
-  
-          <!-- GRID MODE -->
-          <div v-else-if="viewMode === 'table'" class="overflow-x-auto">
-            <table class="min-w-full bg-white border border-gray-200">
-              <thead class="bg-gray-100">
-                <tr>
-                  <th class="p-2 border-b">Time</th>
-                  <th
-                    v-for="day in displayDays"
-                    :key="day"
-                    class="p-2 border-b text-center"
-                  >
-                    {{ day }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="slot in timeSlots" :key="slot.key">
-                  <td class="p-2 border-b font-medium text-gray-700">{{ slot.label }}</td>
-                  <td
-                    v-for="day in displayDays"
-                    :key="day"
-                    class="p-2 border-b text-center"
-                  >
-                    <div v-if="timetable[day] && timetable[day][slot.key]" class="p-2 bg-blue-50 rounded border-l-4 border-blue-400">
-                      <div class="text-sm font-bold text-blue-600">
-                        {{ timetable[day][slot.key].subject }}
-                      </div>
-                      <div class="text-xs italic text-green-600">
-                        {{ timetable[day][slot.key].venue }}
+            <!-- Daily Schedule -->
+            <div class="bg-gray-50 rounded p-3">
+              <div 
+                v-if="getDailySchedule(selectedDay).length > 0"
+                class="space-y-2"
+              >
+                <div 
+                  v-for="(classItem, idx) in getDailySchedule(selectedDay)" 
+                  :key="idx"
+                  @click="selectedClass = classItem"
+                  class="bg-white p-3 rounded border cursor-pointer hover:bg-blue-50"
+                >
+                  <div class="flex justify-between">
+                    <div>
+                      <div class="font-medium">{{ classItem.subject }}</div>
+                      <div class="text-sm text-gray-600">
+                        {{ getTimeSlotLabel(classItem.slot) }} | {{ classItem.venue || 'TBA' }}
                       </div>
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-  
-          <!-- DAILY MODE -->
-          <div v-else class="space-y-4">
-            <!-- Day selector -->
-            <div class="flex items-center space-x-2 mb-4">
-              <label for="daySelect" class="font-medium">Select Day:</label>
-              <select
-                id="daySelect"
-                v-model="selectedDay"
-                class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option
-                  v-for="d in displayDays"
-                  :key="d"
-                  :value="d"
-                >
-                  {{ d }}
-                </option>
-              </select>
-            </div>
-  
-            <!-- Color-coded day banner -->
-            <div
-              class="p-3 rounded-lg text-center font-semibold"
-              :class="dayColors[selectedDay]"
-            >
-              {{ selectedDay }}
-            </div>
-  
-            <!-- List of classes for that day -->
-            <div v-if="timetable[selectedDay] && Object.keys(timetable[selectedDay]).length > 0" class="space-y-3">
-              <div
-                v-for="(cls, slot) in timetable[selectedDay]"
-                :key="slot"
-                class="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
-              >
-                <div>
-                  <p class="text-sm text-gray-600 font-medium">{{ timeSlotsMap[slot] }}</p>
-                  <p class="font-semibold text-lg text-gray-800">{{ cls.subject }}</p>
-                  <p class="text-sm italic text-green-600 flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    {{ cls.venue }}
-                  </p>
+                    <div 
+                      class="w-3 h-3 rounded-full mt-1"
+                      :style="{ backgroundColor: getSubjectColor(classItem.subject) }"
+                    ></div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div v-else class="text-center py-8">
-              <p class="text-gray-500">No classes scheduled for {{ selectedDay }}.</p>
+              <div v-else class="text-center py-4 text-gray-500">
+                No classes scheduled for {{ selectedDay }}
+              </div>
             </div>
           </div>
-        </main>
-      </div>
+          
+          <!-- Class Details Modal -->
+          <div 
+            v-if="selectedClass" 
+            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            @click.self="selectedClass = null"
+          >
+            <div class="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-medium">Class Details</h3>
+                <button @click="selectedClass = null" class="text-gray-500 hover:text-gray-700">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div class="space-y-2">
+                <div>
+                  <span class="text-gray-600">Course:</span>
+                  <span class="font-medium ml-2">{{ selectedClass.subject }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-600">Course Name:</span>
+                  <span class="font-medium ml-2">{{ getSubjectName(selectedClass.subject) }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-600">Section:</span>
+                  <span class="font-medium ml-2">{{ selectedClass.section || 'N/A' }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-600">Time:</span>
+                  <span class="font-medium ml-2">{{ getTimeSlotLabel(selectedClass.slot) }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-600">Venue:</span>
+                  <span class="font-medium ml-2">{{ selectedClass.venue || 'TBA' }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-600">Lecturer:</span>
+                  <span class="font-medium ml-2">{{ selectedClass.lecturer || 'TBA' }}</span>
+                </div>
+              </div>
+              <div class="mt-4 flex justify-end">
+                <button 
+                  @click="selectedClass = null"
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Weekly View (Compact) -->
+          <div>
+            <h6 class="text-sm font-medium text-gray-700 mb-2">Weekly Overview</h6>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-xs">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="py-1 px-2 text-left text-gray-500">Time</th>
+                    <th 
+                      v-for="day in displayDays" 
+                      :key="day"
+                      class="py-1 px-2 text-center text-gray-500"
+                    >
+                      {{ day }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="slot in timeSlots" :key="slot.key">
+                    <td class="py-1 px-2 text-gray-600 font-medium">{{ slot.label }}</td>
+                    <td 
+                      v-for="day in displayDays" 
+                      :key="day"
+                      class="py-1 px-2 text-center"
+                    >
+                      <div 
+                        v-if="hasClass(day, slot.key)"
+                        class="w-4 h-4 mx-auto rounded-full"
+                        :style="{
+                          backgroundColor: getSubjectColor(getClassSubject(day, slot.key))
+                        }"
+                      ></div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
+  </div>
 </template>
-  
+
 <script>
 import { ref, onMounted, computed } from 'vue'
 import Sidebar from '@/components/Sidebar.vue'
@@ -238,14 +269,14 @@ export default {
   setup() {
     const TTMS_API = 'http://web.fc.utm.my/ttms/web_man_webservice_json.cgi'
     const loading = ref(false)
-    const loadingSessions = ref(false)
-    const loadingSemesters = ref(false)
     const timetable = ref({})
-    const viewMode = ref('table')
+    const selectedDay = ref('MON')
+    const selectedClass = ref(null)
+    const subjectDetails = ref({})
+    const showAllSessions = ref(false)
     
     // Session and semester management
-    const availableSessions = ref([])
-    const availableSemesters = ref([])
+    const availableCombinedSessions = ref([])
     const selectedSession = ref('')
     const selectedSemester = ref('')
     const currentSession = ref('')
@@ -255,13 +286,20 @@ export default {
     const displayDays = computed(() =>
       days.filter(d => ['MON','TUE','WED','THU','FRI'].includes(d))
     )
-    const selectedDay = ref(displayDays.value[0])
 
     const hasTimetableData = computed(() => {
       return Object.keys(timetable.value).some(day => 
         timetable.value[day] && Object.keys(timetable.value[day]).length > 0
       )
     })
+
+    // Color palette for subjects
+    const subjectColors = [
+      '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+      '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+      '#14B8A6', '#F43F5E', '#8B5A2B', '#059669', '#7C3AED'
+    ]
+    const subjectColorMap = ref({})
 
     const timeSlots = [
       { key: '2',  label: '8:00 - 8:50'  },
@@ -277,12 +315,67 @@ export default {
     ]
     const timeSlotsMap = timeSlots.reduce((m,s) => { m[s.key]=s.label; return m }, {})
 
-    const dayColors = {
-      MON: 'bg-red-100 text-red-800 border border-red-200',
-      TUE: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-      WED: 'bg-green-100 text-green-800 border border-green-200',
-      THU: 'bg-blue-100 text-blue-800 border border-blue-200',
-      FRI: 'bg-purple-100 text-purple-800 border border-purple-200'
+    function getSubjectColor(subjectCode) {
+      if (!subjectColorMap.value[subjectCode]) {
+        const colorIndex = Object.keys(subjectColorMap.value).length % subjectColors.length
+        subjectColorMap.value[subjectCode] = subjectColors[colorIndex]
+      }
+      return subjectColorMap.value[subjectCode]
+    }
+    
+    function getTimeSlotLabel(slotKey) {
+      return timeSlotsMap[slotKey] || `Slot ${slotKey}`
+    }
+    
+    function getSubjectName(subjectCode) {
+      return subjectDetails.value[subjectCode]?.name || subjectCode
+    }
+    
+    function hasClass(day, slot) {
+      return timetable.value[day] && timetable.value[day][slot]
+    }
+    
+    function getClassSubject(day, slot) {
+      return timetable.value[day] && timetable.value[day][slot] ? timetable.value[day][slot].subject : ''
+    }
+    
+    function getDailySchedule(day) {
+      if (!timetable.value[day]) return []
+      
+      const schedule = []
+      
+      for (const slot in timetable.value[day]) {
+        schedule.push({
+          slot,
+          subject: timetable.value[day][slot].subject,
+          venue: timetable.value[day][slot].venue,
+          section: timetable.value[day][slot].section,
+          lecturer: timetable.value[day][slot].lecturer || 'TBA'
+        })
+      }
+      
+      // Sort by time slot
+      schedule.sort((a, b) => parseInt(a.slot) - parseInt(b.slot))
+      
+      return schedule
+    }
+
+    function isCurrentCombinedSession(session) {
+      return session.sesi === currentSession.value && session.semester === currentSemester.value
+    }
+
+    function isSelectedCombinedSession(session) {
+      return session.sesi === selectedSession.value && session.semester === selectedSemester.value
+    }
+
+    function selectCombinedSession(session) {
+      if (isSelectedCombinedSession(session)) return
+      
+      selectedSession.value = session.sesi
+      selectedSemester.value = session.semester
+      timetable.value = {}
+      
+      loadTimetableForPeriod()
     }
 
     async function fetchJSON(params) {
@@ -325,7 +418,7 @@ export default {
     }
 
     async function loadAvailableSessions() {
-      loadingSessions.value = true
+      loading.value = true
       try {
         const loginData = JSON.parse(localStorage.getItem('web.fc.utm.my_usersession'))
         if (!loginData) return console.error('[Timetable] No login data')
@@ -349,57 +442,33 @@ export default {
           console.log('[Timetable] Fetched and cached subjects data for sessions')
         }
 
-        // Extract unique sessions
-        const sessions = [...new Set(subjects.map(s => s.sesi))].sort((a, b) => b - a)
-        availableSessions.value = sessions.map(sesi => ({ sesi }))
+        // Create combined session-semester entries
+        const sessionMap = {}
+        subjects.forEach(subject => {
+          const key = `${subject.sesi}-${subject.semester}`
+          if (!sessionMap[key]) {
+            sessionMap[key] = {
+              sesi: subject.sesi,
+              semester: subject.semester
+            }
+          }
+        })
+
+        // Convert to array and sort (newest first)
+        const combinedSessions = Object.values(sessionMap).sort((a, b) => {
+          const yearA = parseInt(a.sesi.split('/')[0])
+          const yearB = parseInt(b.sesi.split('/')[0])
+          if (yearA !== yearB) return yearB - yearA
+          return parseInt(b.semester) - parseInt(a.semester)
+        })
+
+        availableCombinedSessions.value = combinedSessions
         
-        console.log('[Timetable] Available sessions:', availableSessions.value)
+        console.log('[Timetable] Available combined sessions:', availableCombinedSessions.value)
       } catch (err) {
         console.error('[Timetable] Error loading sessions:', err)
       } finally {
-        loadingSessions.value = false
-      }
-    }
-
-    async function loadAvailableSemesters() {
-      if (!selectedSession.value) return
-      
-      loadingSemesters.value = true
-      try {
-        const loginData = JSON.parse(localStorage.getItem('web.fc.utm.my_usersession'))
-        if (!loginData) return console.error('[Timetable] No login data')
-
-        // Use cached subjects data if available
-        const subjectsCacheKey = `pelajar_subjek_${loginData.login_name}`
-        const cachedSubjects = localStorage.getItem(subjectsCacheKey)
-        
-        let subjects
-        if (cachedSubjects) {
-          subjects = JSON.parse(cachedSubjects)
-          console.log('[Timetable] Using cached subjects data for semesters')
-        } else {
-          subjects = await fetchJSON({
-            entity: 'pelajar_subjek',
-            no_matrik: loginData.login_name
-          })
-          localStorage.setItem(subjectsCacheKey, JSON.stringify(subjects))
-          console.log('[Timetable] Fetched and cached subjects data for semesters')
-        }
-
-        // Filter subjects by selected session and get unique semesters
-        const semesters = [...new Set(
-          subjects
-            .filter(s => `${s.sesi}` === `${selectedSession.value}`)
-            .map(s => s.semester)
-        )].sort((a, b) => a - b)
-        
-        availableSemesters.value = semesters.map(semester => ({ semester }))
-        
-        console.log('[Timetable] Available semesters for session', selectedSession.value, ':', availableSemesters.value)
-      } catch (err) {
-        console.error('[Timetable] Error loading semesters:', err)
-      } finally {
-        loadingSemesters.value = false
+        loading.value = false
       }
     }
 
@@ -424,6 +493,7 @@ export default {
           
           if (cacheAge < cacheMaxAge) {
             timetable.value = cachedData.timetable || cachedData
+            subjectDetails.value = cachedData.subjectDetails || {}
             console.log('[Timetable] Loaded from cache (age:', Math.round(cacheAge / 1000 / 60), 'minutes)')
             loading.value = false
             return
@@ -451,10 +521,18 @@ export default {
         }
 
         const data = {}
+        const subjectInfo = {}
         const hariMap = {1:'SUN',2:'MON',3:'TUE',4:'WED',5:'THU',6:'FRI',7:'SAT'}
 
         for (const subj of subjects) {
           if (`${subj.sesi}` === `${selectedSession.value}` && `${subj.semester}` === `${selectedSemester.value}`) {
+            // Store subject details
+            subjectInfo[subj.kod_subjek] = {
+              name: subj.nama_subjek || subj.kod_subjek,
+              section: subj.seksyen,
+              credits: subj.kredit
+            }
+            
             // Check if schedule is already cached (following SubjectListView pattern)
             const scheduleCacheKey = `jadual_${subj.sesi}_${subj.semester}_${subj.kod_subjek}_${subj.seksyen}`
             const cachedSchedule = localStorage.getItem(scheduleCacheKey)
@@ -484,17 +562,21 @@ export default {
               data[day] = data[day] || {}
               data[day][slot] = {
                 subject: subj.kod_subjek,
-                venue: item.ruang?.nama_ruang_singkatan || 'TBA'
+                venue: item.ruang?.nama_ruang_singkatan || 'TBA',
+                section: subj.seksyen,
+                lecturer: item.pensyarah || 'TBA'
               }
             }
           }
         }
 
         timetable.value = data
+        subjectDetails.value = subjectInfo
         
         // Cache with timestamp following SubjectListView pattern
         const dataToCache = {
           timetable: data,
+          subjectDetails: subjectInfo,
           timestamp: Date.now()
         }
         localStorage.setItem(cacheKey, JSON.stringify(dataToCache))
@@ -505,19 +587,6 @@ export default {
       } finally {
         loading.value = false
       }
-    }
-
-    function onSessionChange() {
-      selectedSemester.value = ''
-      availableSemesters.value = []
-      timetable.value = {}
-      if (selectedSession.value) {
-        loadAvailableSemesters()
-      }
-    }
-
-    function onSemesterChange() {
-      timetable.value = {}
     }
 
     // Add cache management function (following SubjectListView pattern)
@@ -546,11 +615,10 @@ export default {
     async function initialize() {
       await loadCurrentPeriod()
       await loadAvailableSessions()
-      if (selectedSession.value) {
-        await loadAvailableSemesters()
-        if (selectedSemester.value) {
-          await loadTimetableForPeriod()
-        }
+      
+      // Auto-load timetable for current session
+      if (selectedSession.value && selectedSemester.value) {
+        await loadTimetableForPeriod()
       }
     }
 
@@ -558,21 +626,30 @@ export default {
     const sidebarOpen = ref(false)
 
     return {
-      loading, loadingSessions, loadingSemesters,
-      timetable, viewMode, hasTimetableData,
+      loading,
+      timetable, hasTimetableData,
       displayDays, selectedDay, timeSlots, timeSlotsMap,
-      dayColors, sidebarOpen,
-      availableSessions, availableSemesters,
+      sidebarOpen, selectedClass,
+      availableCombinedSessions,
       selectedSession, selectedSemester,
       currentSession, currentSemester,
-      onSessionChange, onSemesterChange,
+      showAllSessions,
       loadTimetableForPeriod,
-      clearCache // Add this for debugging/manual cache clearing
+      getTimeSlotLabel,
+      getSubjectName,
+      getSubjectColor,
+      hasClass,
+      getClassSubject,
+      getDailySchedule,
+      isCurrentCombinedSession,
+      isSelectedCombinedSession,
+      selectCombinedSession,
+      clearCache
     }
   }
 }
 </script>
-  
+
 <style scoped>
 @media (max-width: 640px) {
   table { min-width: 800px; }
