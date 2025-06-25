@@ -1,9 +1,8 @@
 const express = require('express');
-const router = express.Router();
-const studentController = require('../controllers/studentController');
+const router  = express.Router();
+const ctrl    = require('../controllers/timetableController');
 
-router.get('/dashboard', studentController.viewDashboard);
-router.get('/timetable', studentController.viewTimetable);
-router.get('/timetable/filter', studentController.filterTimetable);
+router.get('/sessions/all',       ctrl.getAllSessions);
+router.get('/sessions/current',   ctrl.getCurrentPeriod);
 
 module.exports = router;

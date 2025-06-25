@@ -1,26 +1,20 @@
 const express = require('express');
+const authRouter = require('./router/auth');
+const timetableRouter = require('./router/timetable');
+const studentRouter = require('./router/student');
+const lecturerRouter = require('./router/lecturer');
+const roomRouter = require('./router/room');
+
 const app = express();
+const PORT = 3000;
 
-app.use(express.json());
+// Routes
+app.use('/api/auth', authRouter);
+app.use('/api/timetable', timetableRouter);
+app.use('/api/student', studentRouter);
+app.use('/api/lecturer', lecturerRouter);
+app.use('/api/room', roomRouter);
 
-// ---- ADD SESSION MIDDLEWARE FIRST ----
-const session = require('express-session');
-app.use(session({
-  secret: 'your-secret-key', // use a secure secret in production
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false } // set to true if using HTTPS
-}));
-// --------------------------------------
-
-// Routers (must come after session middleware)
-app.use('/api/auth', require('./router/auth'));
-app.use('/api/scheduling', require('./router/scheduling'));
-app.use('/api/timetable', require('./router/timetable'));
-
-// Root
-app.get('/', (req, res) => res.send('API Running'));
-
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
