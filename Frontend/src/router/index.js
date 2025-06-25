@@ -9,6 +9,7 @@ import StudentsBySectionView from '@/views/StudentsBySectionView.vue'
 import RoomAvailabilityView from '@/views/RoomAvailabilityView.vue'
 import MyCourses from '@/views/mycourses.vue'
 import FacultyCoursesView from '@/views/FacultyCoursesView.vue'
+import AnalysisView  from '@/views/AnalysisView.vue'
 
 const routes = [
   { path: '/', name: 'Login', component: LoginView },
@@ -20,7 +21,8 @@ const routes = [
   { path: '/students-by-section', name: 'StudentsBySection', component: StudentsBySectionView },
   { path: '/room-availability', name: 'RoomAvailability', component: RoomAvailabilityView },
   { path: '/mycourses', name: 'MyCourses', component: MyCourses },
-  { path: '/facultycourses', name: 'FacultyCourses', component: FacultyCoursesView }
+  { path: '/facultycourses', name: 'FacultyCourses', component: FacultyCoursesView },
+  { path: '/analytics', name: 'analytics', component: AnalysisView }
 ]
 
 export default createRouter({
