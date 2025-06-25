@@ -16,71 +16,47 @@
       </header>
 
       <main class="p-4 sm:p-6 bg-white flex-1">
-        <!-- Session/Semester Selection -->
+        <!-- Combined Session/Semester Selection -->
         <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
           <h3 class="text-lg font-medium mb-4 text-gray-800">Select Academic Period</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
-              <label for="sessionSelect" class="block text-sm font-medium text-gray-700 mb-2">
-                Academic Session
+              <label for="periodSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                Academic Session & Semester
               </label>
               <select
-                id="sessionSelect"
-                v-model="selectedSession"
-                @change="onSessionChange"
+                id="periodSelect"
+                v-model="selectedPeriod"
+                @change="onPeriodChange"
                 class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                :disabled="loadingSessions"
+                :disabled="loadingPeriods"
               >
-                <option value="">Select Session</option>
+                <option value="">Select Session & Semester</option>
                 <option
-                  v-for="session in availableSessions"
-                  :key="session"
-                  :value="session"
+                  v-for="period in availablePeriods"
+                  :key="period.value"
+                  :value="period.value"
                 >
-                  {{ session }} {{ session === currentSession ? '(Current)' : '' }}
+                  {{ period.label }}{{ period.isCurrent ? ' (Current)' : '' }}
                 </option>
               </select>
             </div>
-            
-            <div>
-              <label for="semesterSelect" class="block text-sm font-medium text-gray-700 mb-2">
-                Semester
-              </label>
-              <select
-                id="semesterSelect"
-                v-model="selectedSemester"
-                @change="onSemesterChange"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                :disabled="!selectedSession || loadingSemesters"
-              >
-                <option value="">Select Semester</option>
-                <option
-                  v-for="semester in availableSemesters"
-                  :key="semester"
-                  :value="semester"
-                >
-                  Semester {{ semester }}
-                </option>
-              </select>
-            </div>
-            
             <div>
               <button
                 @click="loadCourses"
-                :disabled="!selectedSession || !selectedSemester || loading"
+                :disabled="!selectedPeriod || loading"
                 class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
               >
                 {{ loading ? 'Loading...' : 'Load Courses' }}
               </button>
             </div>
           </div>
-          
           <!-- Current Selection Display -->
-          <div v-if="selectedSession && selectedSemester" class="mt-4 p-3 bg-blue-50 rounded-md">
+          <div v-if="selectedPeriod" class="mt-4 p-3 bg-blue-50 rounded-md">
             <p class="text-sm text-blue-800">
-              <span class="font-medium">Viewing:</span> 
-              Courses - Session {{ selectedSession }}, Semester {{ selectedSemester }}
-              <span v-if="selectedSession === currentSession && selectedSemester === currentSemester" class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+              <span class="font-medium">Viewing:</span>
+              Courses - {{ selectedPeriodLabel }}
+              <span v-if="isCurrentPeriod" class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
                 Current Period
               </span>
             </p>
@@ -154,9 +130,8 @@
             </div>
           </div>
         </div>
-
         <!-- No Courses Found -->
-        <div v-else-if="!loading && selectedSession && selectedSemester" class="text-center py-12">
+        <div v-else-if="!loading && selectedPeriod" class="text-center py-12">
           <div class="text-gray-400 mb-4">
             <svg class="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
@@ -164,7 +139,7 @@
           </div>
           <h3 class="text-lg font-medium text-gray-900 mb-2">No Courses Found</h3>
           <p class="text-gray-500">
-            No courses found for Session {{ selectedSession }}, Semester {{ selectedSemester }}
+            No courses found for {{ selectedPeriodLabel }}
           </p>
         </div>
 
@@ -194,140 +169,125 @@ export default {
   components: { Sidebar },
   setup() {
     const TTMS_API = 'http://web.fc.utm.my/ttms/web_man_webservice_json.cgi'
-    
+
     const sidebarOpen = ref(false)
     const loading = ref(false)
-    const loadingSessions = ref(false)
-    const loadingSemesters = ref(false)
-    
+    const loadingPeriods = ref(false)
+
     // Selection states
-    const selectedSession = ref('')
-    const selectedSemester = ref('')
+    const selectedPeriod = ref('')
     const currentSession = ref('')
     const currentSemester = ref('')
-    
+    const availablePeriods = ref([])
+
     // Data arrays
-    const availableSessions = ref([])
-    const availableSemesters = ref([])
     const courses = ref([])
-    
+
     // UI states
     const searchQuery = ref('')
-    
+
     // API functions
     async function fetchJSON(params) {
       const url = `${TTMS_API}?${new URLSearchParams(params)}`
-      console.log('[CoursesOffered] Fetching:', url)
       const res = await fetch(url)
       const json = await res.json()
-      console.log('[CoursesOffered] Response for', params.entity, json)
       return json
     }
-    
+
     async function loadCurrentPeriod() {
       try {
         const sessionCacheKey = 'current_session'
         const cachedSession = localStorage.getItem(sessionCacheKey)
-        
+
         let sesData
         if (cachedSession) {
           sesData = JSON.parse(cachedSession)
-          console.log('[CoursesOffered] Using cached session data:', sesData)
         } else {
           const [sessionResponse] = await fetchJSON({ entity: 'sesisemester' })
           sesData = sessionResponse
           localStorage.setItem(sessionCacheKey, JSON.stringify(sesData))
-          console.log('[CoursesOffered] Fetched and cached session data:', sesData)
         }
-        
+
         currentSession.value = sesData.sesi
         currentSemester.value = sesData.semester
-        selectedSession.value = currentSession.value
-        selectedSemester.value = currentSemester.value
-        
-        console.log('[CoursesOffered] Current period set:', currentSession.value, currentSemester.value)
+        selectedPeriod.value = `${currentSession.value}|${currentSemester.value}`
       } catch (err) {
         console.error('[CoursesOffered] Error loading current period:', err)
       }
     }
-    
-    async function loadAvailableSessions() {
-      loadingSessions.value = true
+
+    function generatePeriods() {
+      const periods = []
+      const startYear = 2007
+      // Parse current session and semester
+      let [endYear1, endYear2] = currentSession.value.split('/').map(Number)
+      let endSemester = Number(currentSemester.value)
+
+      for (let y1 = startYear; y1 <= endYear1; y1++) {
+        const sesi = `${y1}/${y1 + 1}`
+        for (let sem = 1; sem <= 2; sem++) {
+          // Do not go past current period
+          if (
+            (y1 > endYear1) ||
+            (y1 === endYear1 && sem > endSemester)
+          ) continue
+          const value = `${sesi}|${sem}`
+          const label = `Session ${sesi}, Semester ${sem}`
+          const isCurrent = (sesi === currentSession.value && sem === endSemester)
+          periods.push({ value, label, isCurrent })
+        }
+      }
+      // Sort descending (latest first)
+      periods.reverse()
+      availablePeriods.value = periods
+    }
+
+    async function loadAvailablePeriods() {
+      loadingPeriods.value = true
       try {
-        const currentYear = new Date().getFullYear()
-        const sessions = [
-          `${currentYear}/${currentYear + 1}`,
-          `${currentYear - 1}/${currentYear}`,
-          `${currentYear - 2}/${currentYear - 1}`
-        ]
-        
-        availableSessions.value = sessions
-        console.log('[CoursesOffered] Available sessions:', sessions)
+        generatePeriods()
       } catch (err) {
-        console.error('[CoursesOffered] Error loading sessions:', err)
-        availableSessions.value = [currentSession.value]
+        console.error('[CoursesOffered] Error loading periods:', err)
+        availablePeriods.value = []
       } finally {
-        loadingSessions.value = false
+        loadingPeriods.value = false
       }
     }
-    
-    async function loadAvailableSemesters() {
-      if (!selectedSession.value) return
-      
-      loadingSemesters.value = true
-      try {
-        availableSemesters.value = [1, 2]
-        console.log('[CoursesOffered] Available semesters:', [1, 2])
-      } catch (err) {
-        console.error('[CoursesOffered] Error loading semesters:', err)
-        availableSemesters.value = [1, 2]
-      } finally {
-        loadingSemesters.value = false
-      }
-    }
-    
+
     async function loadCourses() {
-      if (!selectedSession.value || !selectedSemester.value) return
-      
+      if (!selectedPeriod.value) return
+
       loading.value = true
-      console.log('[CoursesOffered] Loading courses for:', {
-        session: selectedSession.value,
-        semester: selectedSemester.value
-      })
-      
       try {
-        const cacheKey = `courses_${selectedSession.value}_${selectedSemester.value}`
+        const [sesi, semester] = selectedPeriod.value.split('|')
+        const cacheKey = `courses_${sesi}_${semester}`
         const cached = localStorage.getItem(cacheKey)
-        
+
         if (cached) {
           const cachedData = JSON.parse(cached)
           const cacheAge = Date.now() - (cachedData.timestamp || 0)
           const cacheMaxAge = 30 * 60 * 1000 // 30 minutes
-          
+
           if (cacheAge < cacheMaxAge) {
             courses.value = cachedData.courses
-            console.log('[CoursesOffered] Loaded courses from cache:', courses.value.length)
             return
           }
         }
-        
-        // Fetch courses using the subjek API
+
         const coursesData = await fetchJSON({
           entity: 'subjek',
-          sesi: selectedSession.value,
-          semester: selectedSemester.value
+          sesi,
+          semester
         })
-        
+
         courses.value = coursesData
-        
+
         // Cache with timestamp
         const dataToCache = {
           courses: coursesData,
           timestamp: Date.now()
         }
         localStorage.setItem(cacheKey, JSON.stringify(dataToCache))
-        
-        console.log('[CoursesOffered] Successfully loaded', coursesData.length, 'courses')
       } catch (err) {
         console.error('[CoursesOffered] Error loading courses:', err)
         courses.value = []
@@ -335,69 +295,64 @@ export default {
         loading.value = false
       }
     }
-    
+
     // Event handlers
-    function onSessionChange() {
-      selectedSemester.value = ''
-      availableSemesters.value = []
-      courses.value = []
-      if (selectedSession.value) {
-        loadAvailableSemesters()
-      }
-    }
-    
-    function onSemesterChange() {
+    function onPeriodChange() {
       courses.value = []
     }
-    
+
     // Computed properties
     const filteredCourses = computed(() => {
       let filtered = courses.value
-      
-      // Apply search filter
+
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
-        filtered = filtered.filter(course => 
+        filtered = filtered.filter(course =>
           (course.nama_subjek && course.nama_subjek.toLowerCase().includes(query)) ||
           (course.kod_subjek && course.kod_subjek.toLowerCase().includes(query))
         )
       }
-      
+
       return filtered.sort((a, b) => {
         const codeA = a.kod_subjek || ''
         const codeB = b.kod_subjek || ''
         return codeA.localeCompare(codeB)
       })
     })
-    
+
     const totalSections = computed(() => {
       return filteredCourses.value.reduce((sum, course) => sum + (course.bil_seksyen || 0), 0)
     })
-    
+
     const totalStudents = computed(() => {
       return filteredCourses.value.reduce((sum, course) => sum + (course.bil_pelajar || 0), 0)
     })
-    
+
+    const selectedPeriodLabel = computed(() => {
+      const found = availablePeriods.value.find(p => p.value === selectedPeriod.value)
+      return found ? found.label : ''
+    })
+
+    const isCurrentPeriod = computed(() => {
+      const found = availablePeriods.value.find(p => p.value === selectedPeriod.value)
+      return found ? found.isCurrent : false
+    })
+
     // Initialize
     async function initialize() {
       await loadCurrentPeriod()
-      await loadAvailableSessions()
-      if (selectedSession.value) {
-        await loadAvailableSemesters()
-      }
+      await loadAvailablePeriods()
     }
-    
+
     onMounted(initialize)
-    
+
     return {
-      sidebarOpen, loading, loadingSessions, loadingSemesters,
-      selectedSession, selectedSemester,
-      currentSession, currentSemester,
-      availableSessions, availableSemesters,
-      courses, searchQuery,
+      sidebarOpen, loading, loadingPeriods,
+      selectedPeriod, currentSession, currentSemester,
+      availablePeriods, courses, searchQuery,
       filteredCourses, totalSections, totalStudents,
-      onSessionChange, onSemesterChange,
-      loadCourses
+      selectedPeriodLabel, isCurrentPeriod,
+      onPeriodChange, loadCourses
     }
   }
 }
