@@ -1,237 +1,107 @@
-const lecturerService = require('./lecturerService');
+// controllers/lecturerController.js
 
-class LecturerController {
-  
-  /**
-   * Get all lecturers for current session
-   * GET /api/lecturers
-   */
-  async getLecturers(req, res) {
+const lecturerSvc = require('../services/lecturerService');
+const timetableSvc = require('../services/timetableService');
+
+module.exports = {
+  // --- 1. Get full lecturer list using admin session ---
+  // GET /api/lecturer?adminSessionId=...&sesi=...&semester=...
+  async listAll(req, res) {
     try {
-      const { session_id } = req.query;
-      
-      if (!session_id) {
-        return res.status(400).json({
-          success: false,
-          message: 'Session ID is required'
-        });
+      const { loginSessionId, adminSessionId, sesi, semester } = req.query;
+      if (!sesi || !semester || (!loginSessionId && !adminSessionId)) {
+        return res.status(400).json({ error: 'Missing parameters' });
       }
 
-      const lecturers = await lecturerService.getAllLecturers(session_id);
-      
-      res.json({
-        success: true,
-        data: lecturers,
-        count: lecturers.length
-      });
-
-    } catch (error) {
-      console.error('Error in getLecturers:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch lecturers',
-        error: error.message
-      });
-    }
-  }
-
-  /**
-   * Get lecturer sections/subjects
-   * GET /api/lecturers/:no_pekerja/sections
-   */
-  async getLecturerSections(req, res) {
-    try {
-      const { no_pekerja } = req.params;
-      const { sesi, semester } = req.query;
-
-      if (!no_pekerja) {
-        return res.status(400).json({
-          success: false,
-          message: 'Staff number (no_pekerja) is required'
-        });
-      }
-
-      const sections = await lecturerService.getLecturerSections(
-        no_pekerja, 
-        sesi, 
-        semester
-      );
-
-      res.json({
-        success: true,
-        data: sections,
-        lecturer_id: no_pekerja,
-        count: sections.length
-      });
-
-    } catch (error) {
-      console.error('Error in getLecturerSections:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch lecturer sections',
-        error: error.message
-      });
-    }
-  }
-
-  /**
-   * Get lecturer's detailed schedule/timetable
-   * GET /api/lecturers/:no_pekerja/schedule
-   */
-  async getLecturerSchedule(req, res) {
-    try {
-      const { no_pekerja } = req.params;
-      const { sesi, semester } = req.query;
-
-      if (!no_pekerja) {
-        return res.status(400).json({
-          success: false,
-          message: 'Staff number (no_pekerja) is required'
-        });
-      }
-
-      const schedule = await lecturerService.getLecturerSchedule(
-        no_pekerja,
+      const lecturers = await lecturerSvc.fetchAllLecturers({
+        loginSessionId,
+        adminSessionId,
         sesi,
         semester
-      );
-
-      res.json({
-        success: true,
-        data: schedule,
-        lecturer_id: no_pekerja
       });
 
-    } catch (error) {
-      console.error('Error in getLecturerSchedule:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch lecturer schedule',
-        error: error.message
-      });
+      res.json(lecturers);
+    } catch (err) {
+      console.error('[LecturerController] listAll error:', err);
+      res.status(500).json({ error: err.message || 'Failed to fetch lecturers' });
     }
-  }
+  },
 
-  /**
-   * Get current session information
-   * GET /api/session/current
-   */
-  async getCurrentSession(req, res) {
+  // --- 2. Filter by name ---
+  // GET /api/lecturer/filter/name?query=Ali&adminSessionId=...&sesi=...&semester=...
+  async filterByName(req, res) {
     try {
-      const sessionInfo = await lecturerService.getCurrentSession();
-      
-      res.json({
-        success: true,
-        data: sessionInfo
+      const { query, loginSessionId, adminSessionId, sesi, semester } = req.query;
+      if (!query) return res.status(400).json({ error: 'Query is required' });
+
+      const all = await lecturerSvc.fetchAllLecturers({
+        loginSessionId,
+        adminSessionId,
+        sesi,
+        semester
       });
 
-    } catch (error) {
-      console.error('Error in getCurrentSession:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch current session',
-        error: error.message
-      });
+      const filtered = lecturerSvc.filterByName(all, query);
+      res.json(filtered);
+    } catch (err) {
+      console.error('[LecturerController] filterByName error:', err);
+      res.status(500).json({ error: 'Failed to filter by name' });
     }
-  }
+  },
 
-  /**
-   * Get admin authentication
-   * POST /api/auth/admin
-   */
-  async getAdminAuth(req, res) {
+  // --- 3. Filter by partial staff number ---
+  // GET /api/lecturer/filter/staff?partial=12345&adminSessionId=...&sesi=...&semester=...
+  async filterByStaffNo(req, res) {
     try {
-      const { session_id } = req.body;
-      
-      if (!session_id) {
-        return res.status(400).json({
-          success: false,
-          message: 'Session ID is required'
-        });
+      const { partial, loginSessionId, adminSessionId, sesi, semester } = req.query;
+      if (!partial) return res.status(400).json({ error: 'Partial staff number required' });
+
+      const all = await lecturerSvc.fetchAllLecturers({
+        loginSessionId,
+        adminSessionId,
+        sesi,
+        semester
+      });
+
+      const filtered = lecturerSvc.filterByStaffNo(all, partial);
+      res.json(filtered);
+    } catch (err) {
+      console.error('[LecturerController] filterByStaffNo error:', err);
+      res.status(500).json({ error: 'Failed to filter by staff number' });
+    }
+  },
+
+  // --- 4. Get all courses for a lecturer ---
+  // GET /api/lecturer/courses/:staffNo/:session/:semester
+  async getCourses(req, res) {
+    try {
+      const { staffNo, session, semester } = req.params;
+      if (!staffNo || !session || !semester) {
+        return res.status(400).json({ error: 'Missing path parameters' });
       }
 
-      const adminAuth = await lecturerService.getAdminAuth(session_id);
-      
-      res.json({
-        success: true,
-        data: adminAuth
-      });
-
-    } catch (error) {
-      console.error('Error in getAdminAuth:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to authenticate admin',
-        error: error.message
-      });
+      const courses = await timetableSvc.fetchLecturerCourses(staffNo, session, semester);
+      res.json(courses);
+    } catch (err) {
+      console.error('[LecturerController] getCourses error:', err);
+      res.status(500).json({ error: 'Failed to fetch lecturer courses' });
     }
-  }
+  },
 
-  /**
-   * Search lecturers
-   * GET /api/lecturers/search
-   */
-  async searchLecturers(req, res) {
+  // --- 5. Get full timetable for a lecturer ---
+  // GET /api/lecturer/timetable/:staffNo/:session/:semester
+  async getTimetable(req, res) {
     try {
-      const { query, session_id } = req.query;
-      
-      if (!session_id) {
-        return res.status(400).json({
-          success: false,
-          message: 'Session ID is required'
-        });
+      const { staffNo, session, semester } = req.params;
+      if (!staffNo || !session || !semester) {
+        return res.status(400).json({ error: 'Missing path parameters' });
       }
 
-      const lecturers = await lecturerService.searchLecturers(query, session_id);
-      
-      res.json({
-        success: true,
-        data: lecturers,
-        query: query,
-        count: lecturers.length
-      });
-
-    } catch (error) {
-      console.error('Error in searchLecturers:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to search lecturers',
-        error: error.message
-      });
+      const timetable = await timetableSvc.fetchLecturerTimetable(staffNo, session, semester);
+      res.json(timetable);
+    } catch (err) {
+      console.error('[LecturerController] getTimetable error:', err);
+      res.status(500).json({ error: 'Failed to fetch lecturer timetable' });
     }
   }
-
-  /**
-   * Get lecturer statistics
-   * GET /api/lecturers/stats
-   */
-  async getLecturerStats(req, res) {
-    try {
-      const { session_id } = req.query;
-      
-      if (!session_id) {
-        return res.status(400).json({
-          success: false,
-          message: 'Session ID is required'
-        });
-      }
-
-      const stats = await lecturerService.getLecturerStats(session_id);
-      
-      res.json({
-        success: true,
-        data: stats
-      });
-
-    } catch (error) {
-      console.error('Error in getLecturerStats:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch lecturer statistics',
-        error: error.message
-      });
-    }
-  }
-}
-
-module.exports = new LecturerController();
+};

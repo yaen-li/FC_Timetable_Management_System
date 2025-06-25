@@ -1,365 +1,138 @@
-const express = require("express")
-const router = express.Router()
-const StudentService = require("../services/studentService")
+const svc = require('../services/studentService');
 
-/**
- * Student Controller for TTMS Integration
- * Handles all student-related API endpoints
- */
-class StudentController {
-  constructor() {
-    this.studentService = new StudentService()
-  }
-
-  /**
-   * GET /api/students/auth - Get admin authentication
-   */
-  async getAdminAuth(req, res) {
-    try {
-      const { session_id } = req.query
-
-      if (!session_id) {
-        return res.status(400).json({
-          success: false,
-          message: "User session_id is required",
-        })
-      }
-
-      const adminSessionId = await this.studentService.getAdminSession(session_id)
-
-      res.json({
-        success: true,
-        data: {
-          admin_session_id: adminSessionId,
-          expires_in: "15 minutes",
-        },
-        message: "Admin authentication successful for student access",
-      })
-    } catch (error) {
-      console.error("Student admin auth error:", error)
-      res.status(500).json({
-        success: false,
-        message: "Failed to authenticate admin session for student access",
-        error: error.message,
-      })
+module.exports = {
+  // --- 1. Admin-backed student list ---
+  // GET /api/student?loginSessionId=...&sesi=...&semester=...
+ async listAll(req, res) {
+  try {
+    const { loginSessionId, adminSessionId, sesi, semester } = req.query;
+    if (!sesi || !semester) {
+      return res.status(400).json({ error: 'Missing sesi or semester' });
     }
-  }
 
-  /**
-   * GET /api/students/current-period - Get current academic period
-   */
-  async getCurrentPeriod(req, res) {
-    try {
-      const period = await this.studentService.getCurrentPeriod()
-
-      res.json({
-        success: true,
-        data: period,
-        message: "Current academic period retrieved",
-      })
-    } catch (error) {
-      console.error("Get period error:", error)
-      res.status(500).json({
-        success: false,
-        message: "Failed to get current period",
-        error: error.message,
-      })
+    // Either loginSessionId or adminSessionId is required
+    if (!loginSessionId && !adminSessionId) {
+      return res.status(400).json({ error: 'Missing loginSessionId or adminSessionId' });
     }
+
+    const students = await svc.fetchAllStudents(loginSessionId, sesi, semester, adminSessionId);
+    res.json(students);
+  } catch (err) {
+    console.error('[StudentController] listAll error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch students' });
   }
+},
 
-  /**
-   * GET /api/students/section - Get students in a section
-   */
-  async getStudentsInSection(req, res) {
-    try {
-      const { admin_session_id, session, semester, subject_code, section, sort_by, filter_status } = req.query
 
-      if (!admin_session_id || !session || !semester || !subject_code || !section) {
-        return res.status(400).json({
-          success: false,
-          message: "admin_session_id, session, semester, subject_code, and section are required",
-        })
-      }
+  // --- 2. Filters (expects full list to be fetched by client and passed in) ---
 
-      // Get students using the TTMS API
-      const students = await this.studentService.getStudentsInSection(
-        admin_session_id,
-        session,
-        semester,
-        subject_code,
-        section,
-      )
+  // GET /api/student/filter/program?program=...&sesi=...&semester=...&adminSessionId=...
+async searchByProgram(req, res) {
+  try {
+    const { loginSessionId, adminSessionId, sesi, semester, program } = req.query;
 
-      // Apply status filter if provided
-      let filteredStudents = students
-      if (filter_status) {
-        if (filter_status === "active") {
-          filteredStudents = students.filter((s) => s.status === "-" || !s.status)
-        } else if (filter_status === "inactive") {
-          filteredStudents = students.filter((s) => s.status && s.status !== "-")
-        }
-      }
-
-      // Apply sorting
-      if (sort_by) {
-        filteredStudents.sort((a, b) => {
-          switch (sort_by) {
-            case "name":
-              return (a.nama || "").localeCompare(b.nama || "")
-            case "id":
-              return (a.no_kp || "").localeCompare(b.no_kp || "")
-            case "program":
-              return (a.kod_kursus || "").localeCompare(b.kod_kursus || "")
-            case "year":
-              return (a.tahun_kursus || 0) - (b.tahun_kursus || 0)
-            case "faculty":
-              return (a.kod_fakulti || "").localeCompare(b.kod_fakulti || "")
-            default:
-              return 0
-          }
-        })
-      }
-
-      // Calculate statistics
-      const statistics = {
-        total_students: students.length,
-        active_students: students.filter((s) => s.status === "-" || !s.status).length,
-        inactive_students: students.filter((s) => s.status && s.status !== "-").length,
-        faculties: [...new Set(students.map((s) => s.kod_fakulti).filter(Boolean))],
-        programs: [...new Set(students.map((s) => s.kod_kursus).filter(Boolean))],
-        years: [...new Set(students.map((s) => s.tahun_kursus).filter(Boolean))],
-      }
-
-      res.json({
-        success: true,
-        data: {
-          section_info: {
-            subject_code,
-            section,
-            session,
-            semester,
-          },
-          students: filteredStudents,
-          statistics,
-          filters_applied: { sort_by, filter_status },
-        },
-        total: filteredStudents.length,
-        message: "Students in section retrieved successfully",
-      })
-    } catch (error) {
-      console.error("Get students in section error:", error)
-      res.status(500).json({
-        success: false,
-        message: "Failed to get students in section",
-        error: error.message,
-      })
+    if (!sesi || !semester || (!loginSessionId && !adminSessionId)) {
+      return res.status(400).json({ error: 'Missing required parameters' });
     }
+
+    const allStudents = await svc.fetchAllStudents(loginSessionId, sesi, semester, adminSessionId);
+    const filtered = program ? svc.filterByProgram(allStudents, program) : allStudents;
+
+    res.json(filtered);
+  } catch (err) {
+    console.error('[StudentController] searchByProgram error:', err);
+    res.status(500).json({ error: 'Failed to filter by program' });
   }
+},
 
-  /**
-   * GET /api/students/:studentId - Get student details by ID
-   */
-  async getStudentById(req, res) {
-    try {
-      const { studentId } = req.params
-      const { admin_session_id, session, semester, subject_code } = req.query
 
-      if (!admin_session_id || !session || !semester) {
-        return res.status(400).json({
-          success: false,
-          message: "admin_session_id, session, and semester are required",
-        })
-      }
+  // GET /api/student/filter/year?year=...&students=[JSON array]
+  // GET /api/student/filter/year?year=...&sesi=...&semester=...&adminSessionId=...
+async searchByYear(req, res) {
+  try {
+    const { loginSessionId, adminSessionId, sesi, semester, year } = req.query;
 
-      const studentData = await this.studentService.getStudentById(
-        admin_session_id,
-        session,
-        semester,
-        studentId,
-        subject_code,
-      )
-
-      if (!studentData.student) {
-        return res.status(404).json({
-          success: false,
-          message: "Student not found",
-          query: { studentId, session, semester, subject_code },
-        })
-      }
-
-      res.json({
-        success: true,
-        data: studentData,
-        message: "Student details retrieved successfully",
-      })
-    } catch (error) {
-      console.error("Get student by ID error:", error)
-      res.status(500).json({
-        success: false,
-        message: "Failed to get student details",
-        error: error.message,
-      })
+    if (!sesi || !semester || (!loginSessionId && !adminSessionId)) {
+      return res.status(400).json({ error: 'Missing required parameters' });
     }
+
+    const allStudents = await svc.fetchAllStudents(loginSessionId, sesi, semester, adminSessionId);
+    const filtered = year ? svc.filterByYear(allStudents, year) : allStudents;
+
+    res.json(filtered);
+  } catch (err) {
+    console.error('[StudentController] searchByYear error:', err);
+    res.status(500).json({ error: 'Failed to filter by year' });
   }
+}
+,
 
-  /**
-   * GET /api/students/search - Search for students
-   */
-  async searchStudents(req, res) {
+  // --- 3. Timetable endpoints (student-scoped) ---
+
+  // GET /api/student/sessions/:studentId
+  async getAvailableSessions(req, res) {
     try {
-      const { admin_session_id, session, semester, query, search_type, subject_code, limit } = req.query
-
-      if (!admin_session_id || !session || !semester || !query) {
-        return res.status(400).json({
-          success: false,
-          message: "admin_session_id, session, semester, and query are required",
-        })
-      }
-
-      const students = await this.studentService.searchStudents(
-        admin_session_id,
-        session,
-        semester,
-        query,
-        search_type,
-        subject_code,
-      )
-
-      // Apply limit if provided
-      const limitedResults = limit ? students.slice(0, Number.parseInt(limit)) : students
-
-      res.json({
-        success: true,
-        data: limitedResults,
-        total: limitedResults.length,
-        total_found: students.length,
-        query: { query, search_type, subject_code, limit },
-        message: `Found ${students.length} matching students${limit ? `, showing ${limitedResults.length}` : ""}`,
-      })
-    } catch (error) {
-      console.error("Search students error:", error)
-      res.status(500).json({
-        success: false,
-        message: "Failed to search students",
-        error: error.message,
-      })
+      const { studentId } = req.params;
+      res.json(await svc.fetchStudentSessions(studentId));
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to fetch available sessions' });
     }
-  }
+  },
 
-  /**
-   * GET /api/students/statistics - Get student statistics
-   */
-  async getStudentStatistics(req, res) {
+  // GET /api/student/sessions/:studentId/:session/semesters
+  async getAvailableSemesters(req, res) {
     try {
-      const { admin_session_id, session, semester, subject_code } = req.query
-
-      if (!admin_session_id || !session || !semester) {
-        return res.status(400).json({
-          success: false,
-          message: "admin_session_id, session, and semester are required",
-        })
-      }
-
-      const statistics = await this.studentService.getStudentStatistics(
-        admin_session_id,
-        session,
-        semester,
-        subject_code,
-      )
-
-      res.json({
-        success: true,
-        data: statistics,
-        query: { session, semester, subject_code },
-        message: "Student statistics retrieved successfully",
-        note: "Statistics are based on a limited sample to prevent timeout",
-      })
-    } catch (error) {
-      console.error("Get student statistics error:", error)
-      res.status(500).json({
-        success: false,
-        message: "Failed to get student statistics",
-        error: error.message,
-      })
+      const { studentId, session } = req.params;
+      res.json(await svc.fetchStudentSemesters(studentId, session));
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to fetch semesters' });
     }
-  }
+  },
 
-  /**
-   * POST /api/students/export - Export student data
-   */
-  async exportStudentData(req, res) {
+  // GET /api/student/courses/:studentId/:session/:semester
+  async getCourses(req, res) {
     try {
-      const { admin_session_id, session, semester, subject_code, section, format = "json" } = req.body
-
-      if (!admin_session_id || !session || !semester || !subject_code || !section) {
-        return res.status(400).json({
-          success: false,
-          message: "admin_session_id, session, semester, subject_code, and section are required",
-        })
-      }
-
-      const students = await this.studentService.getStudentsInSection(
-        admin_session_id,
-        session,
-        semester,
-        subject_code,
-        section,
-      )
-
-      const exportData = this.studentService.formatStudentsForExport(students, format)
-
-      res.json({
-        success: true,
-        data: exportData,
-        format,
-        filename: `students_${subject_code}_section_${section}_${session.replace("/", "-")}_sem${semester}.${format}`,
-        total_records: students.length,
-        message: "Export data generated successfully",
-      })
-    } catch (error) {
-      console.error("Export student data error:", error)
-      res.status(500).json({
-        success: false,
-        message: "Failed to export student data",
-        error: error.message,
-      })
+      const { studentId, session, semester } = req.params;
+      res.json(await svc.fetchStudentCourses(studentId, session, semester));
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to fetch courses' });
     }
-  }
+  },
 
-  /**
-   * POST /api/students/cache/clear - Clear cache
-   */
-  async clearCache(req, res) {
+  // GET /api/student/timetable/full/:studentId/:session/:semester
+  async getFullTimetable(req, res) {
     try {
-      this.studentService.clearCache()
-
-      res.json({
-        success: true,
-        message: "Student cache cleared successfully",
-        timestamp: new Date().toISOString(),
-      })
-    } catch (error) {
-      console.error("Clear cache error:", error)
-      res.status(500).json({
-        success: false,
-        message: "Failed to clear cache",
-        error: error.message,
-      })
+      const { studentId, session, semester } = req.params;
+      res.json(await svc.fetchStudentTimetable(studentId, session, semester));
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to fetch full timetable' });
     }
+  },
+
+  // GET /api/student/timetable/daily/:studentId/:session/:semester/:day
+  async getDailyTimetable(req, res) {
+    try {
+      const { studentId, session, semester, day } = req.params;
+      res.json(await svc.fetchStudentDailyTimetable(studentId, session, semester, day));
+    } catch (e) {
+      res.status(400).json({ error: e.message || 'Failed to fetch daily timetable' });
+    }
+  },
+  // GET /api/student/filter?program=...&year=...&sesi=...&semester=...&adminSessionId=...
+async filter(req, res) {
+  try {
+    const { loginSessionId, adminSessionId, sesi, semester, program, year } = req.query;
+
+    const all = await svc.fetchAllStudents(loginSessionId, sesi, semester, adminSessionId);
+
+    let filtered = all;
+    if (program) filtered = svc.filterByProgram(filtered, program);
+    if (year)    filtered = svc.filterByYear(filtered, year);
+
+    res.json(filtered);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to apply filters' });
   }
 }
 
-// Create controller instance
-const studentController = new StudentController()
-
-// Define routes
-router.get("/auth", (req, res) => studentController.getAdminAuth(req, res))
-router.get("/current-period", (req, res) => studentController.getCurrentPeriod(req, res))
-router.get("/section", (req, res) => studentController.getStudentsInSection(req, res))
-router.get("/search", (req, res) => studentController.searchStudents(req, res))
-router.get("/statistics", (req, res) => studentController.getStudentStatistics(req, res))
-router.get("/:studentId", (req, res) => studentController.getStudentById(req, res))
-router.post("/export", (req, res) => studentController.exportStudentData(req, res))
-router.post("/cache/clear", (req, res) => studentController.clearCache(req, res))
-
-module.exports = router
+};

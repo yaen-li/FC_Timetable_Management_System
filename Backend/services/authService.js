@@ -1,18 +1,20 @@
-const users = [
-  { id: 1, username: 'student1', password: 'pass123', role: 'student' },
-  { id: 2, username: 'lecturer1', password: 'lect456', role: 'lecturer' }
-];
+const axios = require('axios');
+const TTMS_API       = 'http://web.fc.utm.my/ttms/web_man_webservice_json.cgi';
+const ADMIN_AUTH_API = 'http://web.fc.utm.my/ttms/auth-admin.php';
 
-const jwt = require('jsonwebtoken');
+module.exports = {
+  async authenticateUser(login, password) {
+    const { data } = await axios.get(TTMS_API, {
+      params: { entity:'authentication', login, password }
+    });
+    if (!data || data.length===0) throw new Error('Invalid credentials');
+    return data[0];
+  },
 
-exports.authenticate = async (username, password) => {
-  const user = users.find(u => u.username === username && u.password === password);
-  if (!user) return null;
-
-  // Generate fake JWT token (use secret key in real app)
-  const token = jwt.sign({ userId: user.id, role: user.role }, 'your_jwt_secret', {
-    expiresIn: '1h'
-  });
-
-  return token;
+  async fetchAdminSession(sessionId) {
+    const { data } = await axios.get(ADMIN_AUTH_API, {
+      params: { session_id: sessionId }
+    });
+    return data[0];
+  }
 };
