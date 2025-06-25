@@ -108,7 +108,7 @@
                 @click="$emit('update:open', false)"
               >
                 <UserGroupIcon class="w-5 h-5"/>
-                <span class="ml-3 text-sm">Lecturer Schedule</span>
+                <span class="ml-3 text-sm">Lecturers List</span>
               </router-link>
               <router-link
                 to="/students-by-section"
@@ -116,7 +116,7 @@
                 @click="$emit('update:open', false)"
               >
                 <UsersIcon class="w-5 h-5"/>
-                <span class="ml-3 text-sm">Students by Section</span>
+                <span class="ml-3 text-sm">Students List</span>
               </router-link>
               <router-link
                 to="/room-availability"
