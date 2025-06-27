@@ -16,179 +16,64 @@
       </header>
 
       <main class="p-4 sm:p-6 bg-white flex-1">
-        <!-- Enhanced Session Selection -->
-        <div class="mb-8">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">Academic Sessions</h2>
-            <div class="text-sm text-gray-500">
-              {{ availableSessions.length }} sessions available
+        <!-- Session Selection -->
+        <div class="mb-6">
+          <h2 class="text-xl font-semibold mb-4">Academic Sessions</h2>
+          
+          <!-- First Session (Always Visible) -->
+          <div 
+            v-if="availableSessions.length > 0"
+            @click="selectSession(availableSessions[0])"
+            class="py-2 px-3 cursor-pointer hover:bg-gray-100 flex items-center justify-between rounded"
+            :class="{'bg-blue-50': isSelectedSession(availableSessions[0])}"
+          >
+            <div class="flex items-center">
+              <span class="mr-2">▸</span>
+              <span class="font-medium">
+                {{ availableSessions[0].sesi }} {{ availableSessions[0].semester }}
+                <span v-if="isCurrentSession(availableSessions[0])" class="text-sm text-green-600 ml-1">(Current)</span>
+              </span>
             </div>
+            <span v-if="isSelectedSession(availableSessions[0]) && studentsLoaded" class="text-sm text-gray-500">
+              {{ students.length }} students
+            </span>
           </div>
           
-          <!-- Current/Recent Sessions (Always Visible) -->
-          <div class="mb-6">
-            <h3 class="text-lg font-medium text-gray-700 mb-4 flex items-center">
-              <svg class="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Current & Recent Sessions
-            </h3>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div 
-                v-for="session in availableSessions.slice(0, 6)" 
-                :key="`${session.sesi}-${session.semester}`"
-                @click="selectSession(session)"
-                class="relative group cursor-pointer"
-              >
-                <div 
-                  :class="[
-                    'p-4 rounded-lg border-2 transition-all duration-200 hover:shadow-md',
-                    isSelectedSession(session) 
-                      ? 'border-blue-500 bg-blue-50 shadow-md' 
-                      : 'border-gray-200 bg-white hover:border-blue-300'
-                  ]"
-                >
-                  <!-- Session Header -->
-                  <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center">
-                      <div 
-                        :class="[
-                          'w-3 h-3 rounded-full mr-3',
-                          isCurrentSession(session) ? 'bg-green-400' : 'bg-gray-300'
-                        ]"
-                      ></div>
-                      <span 
-                        :class="[
-                          'font-semibold text-lg',
-                          isSelectedSession(session) ? 'text-blue-700' : 'text-gray-800'
-                        ]"
-                      >
-                        {{ session.sesi }}
-                      </span>
-                    </div>
-                    
-                    <!-- Selection Indicator -->
-                    <div v-if="isSelectedSession(session)" class="text-blue-500">
-                      <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  <!-- Semester Badge -->
-                  <div class="flex items-center justify-between">
-                    <span 
-                      :class="[
-                        'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium',
-                        session.semester === '1' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-purple-100 text-purple-800'
-                      ]"
-                    >
-                      Semester {{ session.semester }}
-                    </span>
-                    
-                    <!-- Current Badge -->
-                    <span 
-                      v-if="isCurrentSession(session)" 
-                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                    >
-                      Current
-                    </span>
-                  </div>
-                  
-                  <!-- Student Count (if selected and loaded) -->
-                  <div v-if="isSelectedSession(session) && studentsLoaded" class="mt-3 pt-3 border-t border-gray-200">
-                    <div class="flex items-center text-sm text-gray-600">
-                      <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                      {{ students.length }} students enrolled
-                    </div>
-                  </div>
-                  
-                  <!-- Loading Indicator -->
-                  <div v-if="isSelectedSession(session) && loading" class="mt-3 pt-3 border-t border-gray-200">
-                    <div class="flex items-center text-sm text-blue-600">
-                      <svg class="animate-spin h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                      </svg>
-                      Loading students...
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Historical Sessions (Collapsible) -->
-          <div v-if="availableSessions.length > 6">
+          <!-- Dropdown for Other Sessions -->
+          <div class="mt-2">
             <button 
               @click="showAllSessions = !showAllSessions" 
-              class="flex items-center justify-between w-full p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+              class="flex items-center text-sm text-blue-600 hover:text-blue-800"
             >
-              <div class="flex items-center">
-                <svg class="h-5 w-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="font-medium text-gray-700">Historical Sessions</span>
-                <span class="ml-2 text-sm text-gray-500">({{ availableSessions.length - 6 }} more)</span>
-              </div>
               <svg 
-                :class="['w-5 h-5 text-gray-500 transition-transform', { 'rotate-180': showAllSessions }]"
+                :class="['w-4 h-4 mr-1 transition-transform', { 'rotate-180': showAllSessions }]"
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
               >
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
+              {{ showAllSessions ? 'Hide' : 'Show' }} all sessions
             </button>
             
-            <!-- Historical Sessions Grid -->
-            <div v-if="showAllSessions" class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div v-if="showAllSessions" class="mt-2 space-y-1 max-w-2xl pl-4 border-l-2 border-gray-200">
               <div 
-                v-for="session in availableSessions.slice(6)" 
+                v-for="(session, index) in availableSessions.slice(1)" 
                 :key="`${session.sesi}-${session.semester}`"
                 @click="selectSession(session)"
-                class="group cursor-pointer"
+                class="py-2 px-3 cursor-pointer hover:bg-gray-100 flex items-center justify-between rounded"
+                :class="{'bg-blue-50': isSelectedSession(session)}"
               >
-                <div 
-                  :class="[
-                    'p-3 rounded-md border transition-all duration-200 hover:shadow-sm',
-                    isSelectedSession(session) 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  ]"
-                >
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <div 
-                        :class="[
-                          'font-medium',
-                          isSelectedSession(session) ? 'text-blue-700' : 'text-gray-800'
-                        ]"
-                      >
-                        {{ session.sesi }}
-                      </div>
-                      <div class="text-sm text-gray-600">Semester {{ session.semester }}</div>
-                    </div>
-                    
-                    <div v-if="isSelectedSession(session)" class="text-blue-500">
-                      <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  <!-- Student Count for Historical Sessions -->
-                  <div v-if="isSelectedSession(session) && studentsLoaded" class="mt-2 pt-2 border-t border-gray-200">
-                    <div class="text-xs text-gray-600">
-                      {{ students.length }} students
-                    </div>
-                  </div>
+                <div class="flex items-center">
+                  <span class="mr-2">▸</span>
+                  <span class="font-medium">
+                    {{ session.sesi }} {{ session.semester }}
+                    <span v-if="isCurrentSession(session)" class="text-sm text-green-600 ml-1">(Current)</span>
+                  </span>
                 </div>
+                <span v-if="isSelectedSession(session) && studentsLoaded" class="text-sm text-gray-500">
+                  {{ students.length }} students
+                </span>
               </div>
             </div>
           </div>
@@ -196,18 +81,15 @@
 
         <!-- Loading State -->
         <div v-if="loading" class="flex justify-center py-8">
-          <div class="text-center">
-            <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-            </svg>
-            <p class="text-gray-600">Loading students...</p>
-          </div>
+          <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+          </svg>
         </div>
 
         <!-- Students List -->
         <div v-else-if="studentsLoaded">
-          <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div class="mb-6 flex justify-between items-center">
             <h2 class="text-xl font-semibold">
               Students - {{ selectedSession.sesi }} (Semester {{ selectedSession.semester }})
             </h2>
@@ -217,7 +99,7 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Search by name or matric number..."
-                class="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-80"
+                class="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -579,17 +461,6 @@
             <p class="text-gray-400 mt-2">Try adjusting your search criteria</p>
           </div>
         </div>
-
-        <!-- Initial State -->
-        <div v-else-if="!loading && !studentsLoaded" class="text-center py-12">
-          <svg class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <h3 class="text-lg font-medium text-gray-900 mb-2">Select Academic Session</h3>
-          <p class="text-gray-500">
-            Choose an academic session above to view student lists
-          </p>
-        </div>
       </main>
     </div>
   </div>
@@ -691,8 +562,9 @@ export default {
     }
 
     function isCurrentSession(session) {
-      // Current session is 2024/2025 semester 1
-      return session.sesi === '2024/2025' && session.semester === '1'
+      const currentYear = new Date().getFullYear()
+      const sessionStartYear = parseInt(session.sesi.split('/')[0])
+      return sessionStartYear === currentYear
     }
 
     function isSelectedSession(session) {
@@ -745,6 +617,12 @@ export default {
       return schedule
     }
 
+    // Check if a semester is the current/latest one for a student
+    function isCurrentSemester(semester, index) {
+      // If it's the first semester in the history (index 0), it's the latest
+      return index === 0
+    }
+
     async function fetchJSON(url) {
       console.log('[StudentList] Fetching:', url)
       try {
@@ -761,21 +639,16 @@ export default {
       }
     }
 
-    // Generate sessions from 2007 to current semester (2024/2025-1)
+    // Generate sessions from 2007 to 2024/2025
     function generateAllSessions() {
       const sessions = []
       
       for (let year = 2007; year <= 2024; year++) {
         const sessionYear = `${year}/${year + 1}`
         
-        // For 2024/2025, only add semester 1 (current semester)
-        if (year === 2024) {
-          sessions.push({ sesi: sessionYear, semester: '1' })
-        } else {
-          // For all other years, add both semesters
-          sessions.push({ sesi: sessionYear, semester: '2' })
-          sessions.push({ sesi: sessionYear, semester: '1' })
-        }
+        // Add only 2 semesters for each academic year
+        sessions.push({ sesi: sessionYear, semester: '2' })
+        sessions.push({ sesi: sessionYear, semester: '1' })
       }
       
       // Sort in reverse chronological order (newest first)
@@ -1061,7 +934,7 @@ export default {
 
     // Initialize on mount
     onMounted(() => {
-      // Generate all sessions (up to current semester 2024/2025-1)
+      // Generate all sessions
       availableSessions.value = generateAllSessions()
       
       // Try to get admin session ID
