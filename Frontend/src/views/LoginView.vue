@@ -39,10 +39,7 @@
           </p>
         </div>
 
-        <!-- Forgot Password Link -->
-        <div class="text-right mb-6">
-          <a href="#" class="text-sm text-blue-600 hover:underline">Forgot Password?</a>
-        </div>
+      
 
         <!-- General Error Message -->
         <p v-if="errors.general" class="mb-4 text-center text-sm text-red-600">
