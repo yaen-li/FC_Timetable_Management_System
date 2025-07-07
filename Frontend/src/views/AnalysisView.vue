@@ -683,18 +683,17 @@ export default {
     // Step 4 Analysis Functions
     async function analyzeConflicts() {
         analyzingConflicts.value = true;
-        conflictAnalysis.value = []; // Clear previous data
+        conflictAnalysis.value = [];
         conflictAnalysisRun.value = false;
-        conflictChartData.value = null; // Clear previous chart data
+        conflictChartData.value = null;
 
         const { session, semester } = parsePeriod(selectedPeriod.value);
         const roomCode = selectedRoom.value.kod_ruang;
-        const selectedSlots = selectedTimeSlots.value; // Pass selected slots to backend if needed
+        const selectedSlots = selectedTimeSlots.value;
 
         try {
-             // *** Replace with your actual backend API endpoint for conflict analysis ***
-            const response = await fetch('/api/analysis/room-conflicts', {
-                method: 'POST', // Or GET, depending on your backend API
+            const response = await fetch('http://web.fc.utm.my/ttms/web_man_webservice_json.cgi', {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -702,7 +701,7 @@ export default {
                     sesi: session,
                     semester: semester,
                     roomCode: roomCode,
-                    selectedSlots: selectedSlots // Send selected slots to backend
+                    selectedSlots: selectedSlots
                 }),
             });
 
@@ -710,14 +709,12 @@ export default {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const conflicts = await response.json(); // Assuming backend returns an array of conflicts
+            const conflicts = await response.json();
 
-            conflictAnalysis.value = conflicts; // Store the conflict data
+            conflictAnalysis.value = conflicts;
 
-            // You could prepare chart data here if you want to visualize conflicts (e.g., number of conflicts per day)
-            // For example:
             const conflictCountsByDay = {};
-            displayDays.forEach(day => conflictCountsByDay[day] = 0); // Initialize counts
+            displayDays.forEach(day => conflictCountsByDay[day] = 0);
             conflicts.forEach(conflict => {
                 const day = conflict.day;
                 if (conflictCountsByDay.hasOwnProperty(day)) {
@@ -725,14 +722,13 @@ export default {
                 }
             });
 
-          // Replace the above line with a complete object literal:
           conflictChartData.value = {
-              labels: displayDays, // Use your displayDays array for labels
+              labels: displayDays,
               datasets: [
                   {
-                      label: 'Conflicts per Day', // Set a meaningful label
-                      backgroundColor: '#f87979', // Red color for conflicts
-                      data: displayDays.map(day => conflictCountsByDay[day]) // Map counts to data array
+                      label: 'Conflicts per Day',
+                      backgroundColor: '#f87979',
+                      data: displayDays.map(day => conflictCountsByDay[day])
                   }
               ]
           };
@@ -740,7 +736,6 @@ export default {
 
         } catch (err) {
             console.error('[ModifiedAnalysis] Error fetching conflict data:', err);
-            // Handle errors
         } finally {
             analyzingConflicts.value = false;
         }
@@ -748,38 +743,37 @@ export default {
 
     async function analyzeUtilization() {
       analyzingUtilization.value = true;
-      utilizationAnalysis.value = null; // Clear previous analysis data
-      utilizationChartData.value = null; // Clear previous chart data
+      utilizationAnalysis.value = null;
+      utilizationChartData.value = null;
 
       const { session, semester } = parsePeriod(selectedPeriod.value);
       const roomCode = selectedRoom.value.kod_ruang;
 
       try {
-        // *** Replace with your actual backend API endpoint for room utilization ***
-        const response = await fetch(`/api/analysis/room-utilization?sesi=${session}&semester=${semester}&roomCode=${roomCode}`);
+        const response = await fetch(`http://web.fc.utm.my/ttms/web_man_webservice_json.cgi?sesi=${session}&semester=${semester}&roomCode=${roomCode}`);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const analysisData = await response.json(); // Assuming backend returns the processed data
+        const analysisData = await response.json();
 
         // Store the analysis data
-        utilizationAnalysis.value = analysisData; // Assuming backend returns a structure similar to your existing utilizationAnalysis
+        utilizationAnalysis.value = analysisData;
 
         // Prepare data for the utilization chart
         if (analysisData) {
             utilizationChartData.value = {
-                labels: ['Occupied Slots', 'Available Slots', 'Selected Slots', 'Remaining Available'],
+                labels: ['Occupied Slots', 'Available Slots', 'Selected Slots', 'Remaining Available'], // Static labels for the chart
                 datasets: [
                     {
                         label: 'Room Utilization',
-                        backgroundColor: ['#f87979', '#41B883', '#a020f0', '#36A2EB'], // Example colors
+                        backgroundColor: ['#f87979', '#41B883', '#a020f0', '#36A2EB'],
                         data: [
                             analysisData.occupiedSlots,
                             analysisData.availableSlots,
-                            selectedTimeSlots.value.length, // Use frontend selected slots
-                            analysisData.remainingAvailable // Assuming backend calculates this or you calculate it here
+                            selectedTimeSlots.value.length,
+                            analysisData.remainingAvailable
                         ]
                     }
                 ]
@@ -789,7 +783,6 @@ export default {
 
       } catch (err) {
         console.error('[ModifiedAnalysis] Error fetching utilization data:', err);
-        // Handle errors
       } finally {
         analyzingUtilization.value = false;
       }
