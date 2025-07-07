@@ -219,30 +219,32 @@
           <div>
             <h6 class="text-sm font-medium text-gray-700 mb-2">Weekly Overview</h6>
             <div class="overflow-x-auto">
-              <table class="min-w-full text-xs">
+              <table class="w-full text-xs border-collapse">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="py-1 px-2 text-left text-gray-500">Time</th>
+                    <th class="py-1 px-1 text-left text-gray-500 text-xs w-16">Time</th>
                     <th 
                       v-for="day in displayDays" 
                       :key="day"
-                      class="py-1 px-2 text-center text-gray-500"
+                      class="py-1 px-1 text-center text-gray-500 text-xs w-12"
                     >
-                      {{ day }}
+                      {{ day.substring(0, 1) }}
                     </th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="slot in timeSlots" :key="slot.key">
-                    <td class="py-1 px-2 text-gray-600 font-medium">{{ slot.label }}</td>
+                    <td class="py-1 px-1 text-gray-600 font-medium text-xs">
+                      {{ slot.label }}
+                    </td>
                     <td 
                       v-for="day in displayDays" 
                       :key="day"
-                      class="py-1 px-2 text-center"
+                      class="py-1 px-1 text-center"
                     >
                       <div 
                         v-if="hasClass(day, slot.key)"
-                        class="w-4 h-4 mx-auto rounded-full"
+                        class="w-3 h-3 mx-auto rounded-full"
                         :style="{
                           backgroundColor: getSubjectColor(getClassSubject(day, slot.key))
                         }"
@@ -649,9 +651,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-@media (max-width: 640px) {
-  table { min-width: 800px; }
-}
-</style>
