@@ -220,9 +220,9 @@
                           <span v-if="subject.seksyen" class="text-sm text-green-600 ml-1">
                             Section {{ subject.seksyen }}
                           </span>
-                          <!-- <span v-if="subject.kredit" class="text-sm text-blue-600 ml-1">
+                          <span v-if="subject.kredit" class="text-sm text-blue-600 ml-1">
                             {{ subject.kredit }} credits
-                          </span> -->
+                          </span>
                         </div>
                       </li>
                       
@@ -623,6 +623,41 @@ export default {
       return index === 0
     }
 
+    /**
+     * Extract credit hours from subject code
+     * The 8th character (last character) of the subject code represents the credit hours
+     * @param {string} subjectCode - The subject code (e.g., "SECJ3014")
+     * @returns {number} - The credit hours for the subject
+     */
+    function getSubjectCredits(subjectCode) {
+      // Validate input
+      if (!subjectCode || typeof subjectCode !== 'string') {
+        console.warn(`[StudentList] Invalid subject code: ${subjectCode}`)
+        return 0
+      }
+      
+      // Check if subject code is exactly 8 characters
+      if (subjectCode.length !== 8) {
+        console.warn(`[StudentList] Subject code "${subjectCode}" is not 8 characters long (${subjectCode.length} chars)`)
+        return 0
+      }
+      
+      // Extract the 8th character (last character)
+      const lastChar = subjectCode.charAt(7)
+      
+      // Parse as integer
+      const credits = parseInt(lastChar, 10)
+      
+      // Validate that it's a valid number
+      if (isNaN(credits)) {
+        console.warn(`[StudentList] Last character "${lastChar}" of subject code "${subjectCode}" is not a valid number`)
+        return 0
+      }
+      
+      console.log(`[StudentList] Subject: ${subjectCode} = ${credits} credits`)
+      return credits
+    }
+
     async function fetchJSON(url) {
       console.log('[StudentList] Fetching:', url)
       try {
@@ -756,7 +791,7 @@ async function loadStudentHistory(student) {
   
   try {
     // Check cache first (using new cache key to force recalculation)
-    const historyCacheKey = `student_history_v2_${student.no_matrik}`
+    const historyCacheKey = `student_history_v3_${student.no_matrik}`
     const cachedHistory = localStorage.getItem(historyCacheKey)
     
     if (cachedHistory) {
@@ -781,46 +816,6 @@ async function loadStudentHistory(student) {
     
     console.log('[StudentList] Raw history data:', historyData)
     
-    // Function to determine credits based on subject code
-    function getSubjectCredits(subjectCode) {
-      // Special cases first
-      if (subjectCode === 'SECJ2154' || subjectCode === 'SECJ3104') {
-        console.log(`[StudentList] Special case: ${subjectCode} = 4 credits`)
-        return 4
-      }
-      
-      // Additional special cases
-      if (subjectCode === 'SECJ3032') {
-        console.log(`[StudentList] Special case: ${subjectCode} = 2 credits`)
-        return 2
-      }
-      
-      if (subjectCode === 'SECJ4134' || subjectCode === 'SECJ4114') {
-        console.log(`[StudentList] Special case: ${subjectCode} = 4 credits`)
-        return 4
-      }
-      
-      if (subjectCode === 'SECJ4118') {
-        console.log(`[StudentList] Special case: ${subjectCode} = 8 credits`)
-        return 8
-      }
-      
-      if (subjectCode === 'SECD3761') {
-        console.log(`[StudentList] Special case: ${subjectCode} = 1 credit`)
-        return 1
-      }
-      
-      // Subject codes starting with 'U' are 2 credits
-      if (subjectCode && subjectCode.startsWith('U')) {
-        console.log(`[StudentList] U-subject: ${subjectCode} = 2 credits`)
-        return 2
-      }
-      
-      // All other subjects are 3 credits
-      console.log(`[StudentList] Regular subject: ${subjectCode} = 3 credits`)
-      return 3
-    }
-    
     // Group by session and semester
     const semesterMap = {}
     
@@ -837,7 +832,7 @@ async function loadStudentHistory(student) {
         console.log(`[StudentList] Created new semester: ${key}`)
       }
       
-      // Calculate credits for this subject
+      // Calculate credits for this subject using the new function
       const credits = getSubjectCredits(item.kod_subjek)
       
       // Add credit info to the subject
@@ -1051,7 +1046,8 @@ async function loadStudentHistory(student) {
       getSubjectName,
       hasClass,
       getClassSubject,
-      getDailySchedule
+      getDailySchedule,
+      getSubjectCredits // Export the function for reusability
     }
   }
 }
