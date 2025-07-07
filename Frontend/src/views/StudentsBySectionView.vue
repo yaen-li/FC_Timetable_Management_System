@@ -220,9 +220,9 @@
                           <span v-if="subject.seksyen" class="text-sm text-green-600 ml-1">
                             Section {{ subject.seksyen }}
                           </span>
-                          <span v-if="subject.kredit" class="text-sm text-blue-600 ml-1">
+                          <!-- <span v-if="subject.kredit" class="text-sm text-blue-600 ml-1">
                             {{ subject.kredit }} credits
-                          </span>
+                          </span> -->
                         </div>
                       </li>
                       
@@ -750,82 +750,143 @@ export default {
       }
     }
 
-    async function loadStudentHistory(student) {
-      console.log('[StudentList] Loading history for:', student.nama)
-      loadingHistory.value = student.no_matrik
+async function loadStudentHistory(student) {
+  console.log('[StudentList] Loading history for:', student.nama)
+  loadingHistory.value = student.no_matrik
+  
+  try {
+    // Check cache first (using new cache key to force recalculation)
+    const historyCacheKey = `student_history_v2_${student.no_matrik}`
+    const cachedHistory = localStorage.getItem(historyCacheKey)
+    
+    if (cachedHistory) {
+      studentHistory.value[student.no_matrik] = JSON.parse(cachedHistory)
+      console.log('[StudentList] Loaded history from cache')
       
-      try {
-        // Check cache first
-        const historyCacheKey = `student_history_${student.no_matrik}`
-        const cachedHistory = localStorage.getItem(historyCacheKey)
-        
-        if (cachedHistory) {
-          studentHistory.value[student.no_matrik] = JSON.parse(cachedHistory)
-          console.log('[StudentList] Loaded history from cache')
-          
-          // Load timetable for the current/latest semester only
-          if (studentHistory.value[student.no_matrik].length > 0) {
-            const latestSemester = studentHistory.value[student.no_matrik][0]
-            loadSemesterTimetable(student, latestSemester)
-          }
-          
-          loadingHistory.value = null
-          return
-        }
-        
-        // Fetch student's enrollment history
-        const historyUrl = `${TTMS_API}?entity=pelajar_subjek&no_matrik=${student.no_matrik}`
-        const historyData = await fetchJSON(historyUrl)
-        
-        // Group by session and semester
-        const semesterMap = {}
-        
-        historyData.forEach(item => {
-          const key = `${item.sesi}-${item.semester}`
-          
-          if (!semesterMap[key]) {
-            semesterMap[key] = {
-              session: item.sesi,
-              semester: item.semester,
-              subjects: [],
-              totalCredits: 0
-            }
-          }
-          
-          // Add subject to the semester
-          semesterMap[key].subjects.push(item)
-          
-          // Add credits to total (ensure it's a number)
-          const credits = parseInt(item.kredit) || 0
-          semesterMap[key].totalCredits += credits
-        })
-        
-        // Convert to array and sort by year and semester (newest first)
-        const history = Object.values(semesterMap).sort((a, b) => {
-          const yearA = parseInt(a.session.split('/')[0])
-          const yearB = parseInt(b.session.split('/')[0])
-          if (yearA !== yearB) return yearB - yearA
-          return parseInt(b.semester) - parseInt(a.semester)
-        })
-        
-        studentHistory.value[student.no_matrik] = history
-        
-        // Cache the history
-        localStorage.setItem(historyCacheKey, JSON.stringify(history))
-        
-        console.log('[StudentList] History loaded for', student.nama, ':', history.length, 'semesters')
-        
-        // Load timetable for the current/latest semester only
-        if (history.length > 0) {
-          loadSemesterTimetable(student, history[0])
-        }
-        
-      } catch (err) {
-        console.error('[StudentList] Error loading history:', err)
-      } finally {
-        loadingHistory.value = null
+      // Load timetable for the current/latest semester only
+      if (studentHistory.value[student.no_matrik].length > 0) {
+        const latestSemester = studentHistory.value[student.no_matrik][0]
+        loadSemesterTimetable(student, latestSemester)
       }
+      
+      loadingHistory.value = null
+      return
     }
+    
+    console.log('[StudentList] No cache found, fetching fresh data...')
+    
+    // Fetch student's enrollment history
+    const historyUrl = `${TTMS_API}?entity=pelajar_subjek&no_matrik=${student.no_matrik}`
+    const historyData = await fetchJSON(historyUrl)
+    
+    console.log('[StudentList] Raw history data:', historyData)
+    
+    // Function to determine credits based on subject code
+    function getSubjectCredits(subjectCode) {
+      // Special cases first
+      if (subjectCode === 'SECJ2154' || subjectCode === 'SECJ3104') {
+        console.log(`[StudentList] Special case: ${subjectCode} = 4 credits`)
+        return 4
+      }
+      
+      // Additional special cases
+      if (subjectCode === 'SECJ3032') {
+        console.log(`[StudentList] Special case: ${subjectCode} = 2 credits`)
+        return 2
+      }
+      
+      if (subjectCode === 'SECJ4134' || subjectCode === 'SECJ4114') {
+        console.log(`[StudentList] Special case: ${subjectCode} = 4 credits`)
+        return 4
+      }
+      
+      if (subjectCode === 'SECJ4118') {
+        console.log(`[StudentList] Special case: ${subjectCode} = 8 credits`)
+        return 8
+      }
+      
+      if (subjectCode === 'SECD3761') {
+        console.log(`[StudentList] Special case: ${subjectCode} = 1 credit`)
+        return 1
+      }
+      
+      // Subject codes starting with 'U' are 2 credits
+      if (subjectCode && subjectCode.startsWith('U')) {
+        console.log(`[StudentList] U-subject: ${subjectCode} = 2 credits`)
+        return 2
+      }
+      
+      // All other subjects are 3 credits
+      console.log(`[StudentList] Regular subject: ${subjectCode} = 3 credits`)
+      return 3
+    }
+    
+    // Group by session and semester
+    const semesterMap = {}
+    
+    historyData.forEach(item => {
+      const key = `${item.sesi}-${item.semester}`
+      
+      if (!semesterMap[key]) {
+        semesterMap[key] = {
+          session: item.sesi,
+          semester: item.semester,
+          subjects: [],
+          totalCredits: 0
+        }
+        console.log(`[StudentList] Created new semester: ${key}`)
+      }
+      
+      // Calculate credits for this subject
+      const credits = getSubjectCredits(item.kod_subjek)
+      
+      // Add credit info to the subject
+      item.kredit = credits
+      
+      // Add subject to the semester
+      semesterMap[key].subjects.push(item)
+      
+      // Add to total credits
+      semesterMap[key].totalCredits += credits
+      
+      console.log(`[StudentList] Added ${item.kod_subjek} (${credits} credits) to ${key}. New total: ${semesterMap[key].totalCredits}`)
+    })
+    
+    // Convert to array and sort by year and semester (newest first)
+    const history = Object.values(semesterMap).sort((a, b) => {
+      const yearA = parseInt(a.session.split('/')[0])
+      const yearB = parseInt(b.session.split('/')[0])
+      if (yearA !== yearB) return yearB - yearA
+      return parseInt(b.semester) - parseInt(a.semester)
+    })
+
+    // Debug log to see the final history with credits
+    console.log('[StudentList] Final history with credits:', history.map(sem => ({
+      session: sem.session,
+      semester: sem.semester,
+      totalCredits: sem.totalCredits,
+      subjectCount: sem.subjects.length,
+      subjects: sem.subjects.map(s => ({ kod: s.kod_subjek, kredit: s.kredit }))
+    })))
+    
+    studentHistory.value[student.no_matrik] = history
+    
+    // Cache the history with new cache key
+    localStorage.setItem(historyCacheKey, JSON.stringify(history))
+    
+    console.log('[StudentList] History loaded for', student.nama, ':', history.length, 'semesters')
+    
+    // Load timetable for the current/latest semester only
+    if (history.length > 0) {
+      loadSemesterTimetable(student, history[0])
+    }
+    
+  } catch (err) {
+    console.error('[StudentList] Error loading history:', err)
+  } finally {
+    loadingHistory.value = null
+  }
+}
 
     async function loadSemesterTimetable(student, semester) {
       const timetableKey = `${student.no_matrik}-${semester.session}-${semester.semester}`
