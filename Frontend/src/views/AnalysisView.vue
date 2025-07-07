@@ -289,25 +289,9 @@
                 >
                   {{ analyzingConflicts ? 'Analyzing...' : 'Check for Conflicts' }}
                 </button>
-                
+
                 <div v-if="conflictAnalysis.length > 0" class="space-y-3">
-                  <div
-                    v-for="conflict in conflictAnalysis"
-                    :key="`${conflict.day}-${conflict.time}`"
-                    class="p-4 bg-red-50 border border-red-200 rounded-lg"
-                  >
-                    <div class="flex items-center space-x-2 mb-2">
-                      <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                      <span class="font-medium text-red-800">Potential Conflict Detected</span>
-                    </div>
-                    <div class="text-sm text-red-700">
-                      <strong>Time:</strong> {{ conflict.day }} at {{ conflict.time }}<br>
-                      <strong>Affected Students:</strong> {{ conflict.affectedStudents.join(', ') }}<br>
-                      <strong>Conflicting Subjects:</strong> {{ conflict.subjects.join(', ') }}
-                    </div>
-                  </div>
+                  <!-- ... (existing conflict display) ... -->
                 </div>
                 <div v-else-if="conflictAnalysis.length === 0 && conflictAnalysisRun" class="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div class="flex items-center space-x-2">
@@ -316,6 +300,12 @@
                     </svg>
                     <span class="text-green-800">No conflicts detected for selected time slots</span>
                   </div>
+                </div>
+
+                <!-- Add the chart here if you create conflictChartData -->
+                <div v-if="conflictChartData" class="mt-6 p-4 bg-white border rounded-lg">
+                    <h5 class="font-medium text-gray-700 mb-3">Conflict Summary Chart</h5>
+                    <Bar :data="conflictChartData" :options="{ responsive: true, maintainAspectRatio: false }" />
                 </div>
               </div>
 
@@ -371,6 +361,12 @@
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <!-- Add the chart here -->
+              <div v-if="utilizationChartData" class="mt-6 p-4 bg-white border rounded-lg">
+                <h5 class="font-medium text-gray-700 mb-3">Utilization Chart</h5>
+                <Bar :data="utilizationChartData" :options="{ responsive: true, maintainAspectRatio: false }" />
               </div>
 
               <!-- Optimization Suggestions -->
@@ -437,10 +433,14 @@
 <script>
 import Sidebar from '@/components/Sidebar.vue'
 import { ref, computed, onMounted } from 'vue'
+import { Bar } from 'vue-chartjs'
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
+// Register the necessary Chart.js components
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
 export default {
   name: 'ModifiedAnalysisView',
-  components: { Sidebar },
+  components: { Sidebar, Bar },
   setup() {
     const TTMS_API = 'http://web.fc.utm.my/ttms/web_man_webservice_json.cgi'
     
@@ -474,6 +474,8 @@ export default {
     const conflictAnalysisRun = ref(false)
     const utilizationAnalysis = ref(null)
     const optimizationSuggestions = ref([])
+    const utilizationChartData = ref(null); // Added chart data
+    const conflictChartData = ref(null); // Added chart data
     
     const analysisTabs = [
       { id: 'conflicts', name: 'Conflict Analysis' },
@@ -680,76 +682,116 @@ export default {
 
     // Step 4 Analysis Functions
     async function analyzeConflicts() {
-      analyzingConflicts.value = true
-      conflictAnalysisRun.value = false
-      
-      try {
-        // Simulate conflict analysis
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        
-        // Mock conflict detection logic
-        const conflicts = []
-        
-        for (const slot of selectedTimeSlots.value) {
-          // Check if this time slot conflicts with existing schedules
-          // This would involve checking student enrollments, lecturer schedules, etc.
-          // For demo purposes, we'll create some mock conflicts
-          
-          if (Math.random() > 0.7) { // 30% chance of conflict
-            conflicts.push({
-              day: slot.day,
-              time: slot.label,
-              affectedStudents: ['A12345', 'B67890', 'C11111'],
-              subjects: ['SCSJ1013', 'SCSV1013']
-            })
-          }
+        analyzingConflicts.value = true;
+        conflictAnalysis.value = []; // Clear previous data
+        conflictAnalysisRun.value = false;
+        conflictChartData.value = null; // Clear previous chart data
+
+        const { session, semester } = parsePeriod(selectedPeriod.value);
+        const roomCode = selectedRoom.value.kod_ruang;
+        const selectedSlots = selectedTimeSlots.value; // Pass selected slots to backend if needed
+
+        try {
+             // *** Replace with your actual backend API endpoint for conflict analysis ***
+            const response = await fetch('/api/analysis/room-conflicts', {
+                method: 'POST', // Or GET, depending on your backend API
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sesi: session,
+                    semester: semester,
+                    roomCode: roomCode,
+                    selectedSlots: selectedSlots // Send selected slots to backend
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const conflicts = await response.json(); // Assuming backend returns an array of conflicts
+
+            conflictAnalysis.value = conflicts; // Store the conflict data
+
+            // You could prepare chart data here if you want to visualize conflicts (e.g., number of conflicts per day)
+            // For example:
+            const conflictCountsByDay = {};
+            displayDays.forEach(day => conflictCountsByDay[day] = 0); // Initialize counts
+            conflicts.forEach(conflict => {
+                const day = conflict.day;
+                if (conflictCountsByDay.hasOwnProperty(day)) {
+                    conflictCountsByDay[day]++;
+                }
+            });
+
+          // Replace the above line with a complete object literal:
+          conflictChartData.value = {
+              labels: displayDays, // Use your displayDays array for labels
+              datasets: [
+                  {
+                      label: 'Conflicts per Day', // Set a meaningful label
+                      backgroundColor: '#f87979', // Red color for conflicts
+                      data: displayDays.map(day => conflictCountsByDay[day]) // Map counts to data array
+                  }
+              ]
+          };
+          conflictAnalysisRun.value = true;
+
+        } catch (err) {
+            console.error('[ModifiedAnalysis] Error fetching conflict data:', err);
+            // Handle errors
+        } finally {
+            analyzingConflicts.value = false;
         }
-        
-        conflictAnalysis.value = conflicts
-        conflictAnalysisRun.value = true
-        
-      } catch (err) {
-        console.error('[ModifiedAnalysis] Error analyzing conflicts:', err)
-      } finally {
-        analyzingConflicts.value = false
-      }
     }
 
     async function analyzeUtilization() {
-      analyzingUtilization.value = true
-      
+      analyzingUtilization.value = true;
+      utilizationAnalysis.value = null; // Clear previous analysis data
+      utilizationChartData.value = null; // Clear previous chart data
+
+      const { session, semester } = parsePeriod(selectedPeriod.value);
+      const roomCode = selectedRoom.value.kod_ruang;
+
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        const totalSlots = displayDays.length * timeSlots.length
-        let occupiedSlots = 0
-        
-        // Count occupied slots
-        for (const day of displayDays) {
-          if (roomTimetable.value[day]) {
-            occupiedSlots += Object.keys(roomTimetable.value[day]).length
-          }
+        // *** Replace with your actual backend API endpoint for room utilization ***
+        const response = await fetch(`/api/analysis/room-utilization?sesi=${session}&semester=${semester}&roomCode=${roomCode}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
-        const availableSlots = totalSlots - occupiedSlots
-        const utilizationRate = Math.round((occupiedSlots / totalSlots) * 100)
-        const newOccupiedSlots = occupiedSlots + selectedTimeSlots.value.length
-        const newUtilizationRate = Math.round((newOccupiedSlots / totalSlots) * 100)
-        const remainingAvailable = availableSlots - selectedTimeSlots.value.length
-        
-        utilizationAnalysis.value = {
-          totalSlots,
-          occupiedSlots,
-          availableSlots,
-          utilizationRate,
-          newUtilizationRate,
-          remainingAvailable
+
+        const analysisData = await response.json(); // Assuming backend returns the processed data
+
+        // Store the analysis data
+        utilizationAnalysis.value = analysisData; // Assuming backend returns a structure similar to your existing utilizationAnalysis
+
+        // Prepare data for the utilization chart
+        if (analysisData) {
+            utilizationChartData.value = {
+                labels: ['Occupied Slots', 'Available Slots', 'Selected Slots', 'Remaining Available'],
+                datasets: [
+                    {
+                        label: 'Room Utilization',
+                        backgroundColor: ['#f87979', '#41B883', '#a020f0', '#36A2EB'], // Example colors
+                        data: [
+                            analysisData.occupiedSlots,
+                            analysisData.availableSlots,
+                            selectedTimeSlots.value.length, // Use frontend selected slots
+                            analysisData.remainingAvailable // Assuming backend calculates this or you calculate it here
+                        ]
+                    }
+                ]
+            };
         }
-        
+
+
       } catch (err) {
-        console.error('[ModifiedAnalysis] Error analyzing utilization:', err)
+        console.error('[ModifiedAnalysis] Error fetching utilization data:', err);
+        // Handle errors
       } finally {
-        analyzingUtilization.value = false
+        analyzingUtilization.value = false;
       }
     }
 
@@ -848,7 +890,9 @@ export default {
       analyzeUtilization,
       generateOptimizations,
       getPeriodLabel,
-      isCurrentPeriod
+      isCurrentPeriod,
+      utilizationChartData,
+      conflictChartData, 
     }
   }
 }
